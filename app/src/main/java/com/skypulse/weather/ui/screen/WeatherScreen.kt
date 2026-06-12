@@ -249,7 +249,7 @@ fun WeatherScreen(
                                         LocalSkipCardAnimation provides (swiping || justEnteredCityDetail.value)
                                     ) {
                                         AnimatedContent(
-                                            targetState = state.locationName,
+                                            targetState = selectedCityId ?: "current_location",
                                             transitionSpec = {
                                                 slideInHorizontally(tween(250)) { fullWidth -> fullWidth * swipeDirection } togetherWith
                                                     slideOutHorizontally(tween(250)) { fullWidth -> -fullWidth * swipeDirection }
