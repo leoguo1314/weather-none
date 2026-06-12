@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.sp
 import com.skypulse.weather.model.AlertContent
 import com.skypulse.weather.model.RealtimeWeather
 import com.skypulse.weather.ui.theme.*
+import com.skypulse.weather.ui.screen.LocalSkipCardAnimation
 import com.skypulse.weather.util.WeatherUtils
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -262,20 +263,21 @@ fun CurrentWeather(
     modifier: Modifier = Modifier
 ) {
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+    val skipAnimation = LocalSkipCardAnimation.current
     var visible by remember { mutableStateOf(false) }
-    val alpha by animateFloatAsState(
-        targetValue = if (visible) 1f else 0f,
-        animationSpec = tween(800),
+    val cardAlpha by animateFloatAsState(
+        targetValue = if (skipAnimation || visible) 1f else 0f,
+        animationSpec = if (skipAnimation) tween(0) else tween(800),
         label = "fade_in"
     )
     val offsetY by animateFloatAsState(
-        targetValue = if (visible) 0f else 30f,
-        animationSpec = tween(800, easing = EaseOut),
+        targetValue = if (visible || skipAnimation) 0f else 30f,
+        animationSpec = if (skipAnimation) tween(0) else tween(800, easing = EaseOut),
         label = "slide_in"
     )
     val paddingDp = offsetY.dp
-
     LaunchedEffect(Unit) { visible = true }
+    LaunchedEffect(skipAnimation) { if (skipAnimation) visible = true }
 
     val aqiDesc = realtime?.air_quality?.description?.chn ?: realtime?.air_quality?.aqi?.chn?.toInt()?.let {
         when {
@@ -290,9 +292,7 @@ fun CurrentWeather(
 
     Column(
         modifier = modifier
-            .fillMaxWidth()
-            .alpha(alpha)
-            .padding(top = paddingDp)
+            .alpha(cardAlpha)
             .padding(horizontal = 20.dp)
     ) {
         // Temperature centered — tap to refresh

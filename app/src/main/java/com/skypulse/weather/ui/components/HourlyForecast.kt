@@ -21,6 +21,7 @@ import com.skypulse.weather.model.HourlyForecast
 import com.skypulse.weather.model.HourlySkycon
 import com.skypulse.weather.model.HourlyValue
 import com.skypulse.weather.ui.theme.*
+import com.skypulse.weather.ui.screen.LocalSkipCardAnimation
 import com.skypulse.weather.ui.theme.TextTertiary
 import com.skypulse.weather.util.WeatherUtils
 
@@ -36,17 +37,18 @@ fun HourlyForecastCard(
     val data = hourly ?: return
     data.temperature ?: return
 
+    val skipAnimation = LocalSkipCardAnimation.current
     var visible by remember { mutableStateOf(false) }
-    val alpha by animateFloatAsState(
-        targetValue = if (visible) 1f else 0f,
-        animationSpec = tween(600, delayMillis = 300),
+    val cardAlpha by animateFloatAsState(
+        targetValue = if (skipAnimation || visible) 1f else 0f,
+        animationSpec = if (skipAnimation) tween(0) else tween(600, delayMillis = 300),
         label = "card_fade"
     )
-
     LaunchedEffect(Unit) { visible = true }
+    LaunchedEffect(skipAnimation) { if (skipAnimation) visible = true }
 
     GlassCard(
-        modifier = modifier.alpha(alpha)
+        modifier = modifier.alpha(cardAlpha)
     ) {
         Column(modifier = Modifier.padding(vertical = 14.dp)) {
             Text(

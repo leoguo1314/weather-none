@@ -26,6 +26,7 @@ import com.skypulse.weather.ui.theme.TextPrimary
 import com.skypulse.weather.ui.theme.TextSecondary
 import com.skypulse.weather.ui.theme.TextTertiary
 import kotlin.math.pow
+import com.skypulse.weather.ui.screen.LocalSkipCardAnimation
 
 private const val BAR_COUNT = 48
 private const val BAR_WIDTH_DP = 3f
@@ -45,15 +46,17 @@ fun MinutelyPrecipitationCard(
     val sampled = remember(raw) { sampleToBins(raw, BAR_COUNT) }
     if (sampled.all { it == 0.0 }) return
 
+    val skipAnimation = LocalSkipCardAnimation.current
     var visible by remember { mutableStateOf(false) }
-    val alpha by animateFloatAsState(
-        targetValue = if (visible) 1f else 0f,
-        animationSpec = tween(600, delayMillis = 150),
+    val cardAlpha by animateFloatAsState(
+        targetValue = if (skipAnimation || visible) 1f else 0f,
+        animationSpec = if (skipAnimation) tween(0) else tween(600, delayMillis = 150),
         label = "minutely_fade"
     )
     LaunchedEffect(Unit) { visible = true }
+    LaunchedEffect(skipAnimation) { if (skipAnimation) visible = true }
 
-    GlassCard(modifier = modifier.alpha(alpha)) {
+    GlassCard(modifier = modifier.alpha(cardAlpha)) {
         Column(modifier = Modifier.padding(vertical = 16.dp)) {
             Text(
                 text = "分钟级降水",

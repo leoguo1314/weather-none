@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.skypulse.weather.model.DailyForecast
 import com.skypulse.weather.ui.theme.*
+import com.skypulse.weather.ui.screen.LocalSkipCardAnimation
 import com.skypulse.weather.ui.theme.TextTertiary
 import com.skypulse.weather.util.WeatherUtils
 
@@ -38,14 +39,15 @@ fun DailyForecastCard(
     val forecast = daily ?: return
     val temperatures = forecast.temperature ?: return
 
+    val skipAnimation = LocalSkipCardAnimation.current
     var visible by remember { mutableStateOf(false) }
-    val alpha by animateFloatAsState(
-        targetValue = if (visible) 1f else 0f,
-        animationSpec = tween(600, delayMillis = 450),
+    val cardAlpha by animateFloatAsState(
+        targetValue = if (skipAnimation || visible) 1f else 0f,
+        animationSpec = if (skipAnimation) tween(0) else tween(600, delayMillis = 300),
         label = "card_fade"
     )
-
     LaunchedEffect(Unit) { visible = true }
+    LaunchedEffect(skipAnimation) { if (skipAnimation) visible = true }
 
     val allTemps = temperatures.flatMap { t -> listOfNotNull(t.max, t.min) }
     val globalMin = allTemps.minOrNull() ?: 0.0
@@ -54,7 +56,7 @@ fun DailyForecastCard(
     val itemWidth = DAY_WIDTH.dp
 
     GlassCard(
-        modifier = modifier.alpha(alpha)
+        modifier = modifier.alpha(cardAlpha)
     ) {
         Column(modifier = Modifier.padding(vertical = 14.dp)) {
             Text(

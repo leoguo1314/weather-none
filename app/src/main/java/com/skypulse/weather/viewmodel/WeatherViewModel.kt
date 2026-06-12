@@ -105,6 +105,9 @@ class WeatherViewModel @Inject constructor(
     private val _selectedAlertIndex = MutableStateFlow(0)
     val selectedAlertIndex: StateFlow<Int> = _selectedAlertIndex.asStateFlow()
 
+    private val _swipeDirection = MutableStateFlow(1)
+    val swipeDirection: StateFlow<Int> = _swipeDirection.asStateFlow()
+
     // --- GPS-based state (detail view) ---
     private val _uiState = MutableStateFlow<WeatherUiState>(WeatherUiState.Loading)
     val uiState: StateFlow<WeatherUiState> = _uiState.asStateFlow()
@@ -199,6 +202,51 @@ class WeatherViewModel @Inject constructor(
                 // Fetch if not cached
                 fetchWeatherForCity(city)
             }
+        }
+    }
+
+    fun switchToNextCity() {
+        _swipeDirection.value = 1
+        val cities = _savedCities.value
+        if (cities.size <= 1) return
+        val currentId = _selectedCityId.value
+        val currentIndex = if (currentId == null) {
+            cities.indexOfFirst { it.isCurrentLocation }
+        } else {
+            cities.indexOfFirst { it.id == currentId }
+        }
+        val nextIndex = if (currentIndex < 0) 0 else (currentIndex + 1) % cities.size
+        switchToCity(cities[nextIndex])
+    }
+
+    fun switchToPreviousCity() {
+        _swipeDirection.value = -1
+        val cities = _savedCities.value
+        if (cities.size <= 1) return
+        val currentId = _selectedCityId.value
+        val currentIndex = if (currentId == null) {
+            cities.indexOfFirst { it.isCurrentLocation }
+        } else {
+            cities.indexOfFirst { it.id == currentId }
+        }
+        val prevIndex = if (currentIndex < 0) 0 else {
+            (currentIndex - 1 + cities.size) % cities.size
+        }
+        switchToCity(cities[prevIndex])
+    }
+
+    private fun switchToCity(city: City) {
+        _selectedCityId.value = city.id
+        val cached = _cityWeatherMap.value[city.id]
+        if (cached?.weather != null) {
+            // Instant switch — no Loading state, no flash
+            _uiState.value = WeatherUiState.Success(
+                weather = cached.weather,
+                locationName = city.name
+            )
+        } else {
+            // No cache — keep old data visible, fetch silently
+            fetchWeatherForCitySilent(city)
         }
     }
 
@@ -346,6 +394,30 @@ class WeatherViewModel @Inject constructor(
                 }
             )
             _cityWeatherMap.value = updatedMap
+        }
+    }
+
+    private fun fetchWeatherForCitySilent(city: City) {
+        viewModelScope.launch {
+            val result = fetchWithRetry(city.longitude, city.latitude)
+            result.fold(
+                onSuccess = { response ->
+                    _lastFetchTime.value = System.currentTimeMillis()
+                    // Only update if still viewing this city
+                    if (_selectedCityId.value == city.id) {
+                        _uiState.value = WeatherUiState.Success(
+                            weather = response,
+                            locationName = city.name
+                        )
+                    }
+                    _cityWeatherMap.value = _cityWeatherMap.value.toMutableMap().apply {
+                        put(city.id, CityWeatherData(weather = response))
+                    }
+                    weatherDataStore.save(city.id, response)
+                    weatherCache.save(city.id, response)
+                },
+                onFailure = { _ -> }
+            )
         }
     }
 
