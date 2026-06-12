@@ -197,7 +197,7 @@ fun WeatherScreen(
                                 val swipingUpdated by rememberUpdatedState(swiping)
                                 var lastTriggerTime by remember { mutableLongStateOf(0L) }
 
-                                LaunchedEffect(state.locationName) {
+                                LaunchedEffect(selectedCityId) {
                                     swiping = true
                                     delay(350)
                                     swiping = false
@@ -255,9 +255,10 @@ fun WeatherScreen(
                                                     slideOutHorizontally(tween(250)) { fullWidth -> -fullWidth * swipeDirection }
                                             },
                                             label = "city_switch"
-                                        ) {
+                                        ) { targetCityId ->
+                                            val contentState = remember(targetCityId) { state }
                                             WeatherContentBody(
-                                                state = state,
+                                                state = contentState,
                                                 scrollState = contentScrollState,
                                                 onRefresh = { viewModel.refresh() },
                                                 onAlertClick = { viewModel.navigateToAlertDetail(0) }
