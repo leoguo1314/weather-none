@@ -1,8 +1,11 @@
 package com.skypulse.weather.repository
 
 import com.skypulse.weather.api.CaiyunApi
+import com.skypulse.weather.model.DailyForecast
 import com.skypulse.weather.model.WeatherResponse
+import com.skypulse.weather.model.WeatherResult
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.*
@@ -30,7 +33,8 @@ class WeatherRepositoryTest {
                 latitude = 39.9042,
                 alert = true,
                 dailySteps = 15,
-                hourlySteps = 48
+                hourlySteps = 48,
+                begin = null
             )
         } returns mockResponse
 
@@ -50,7 +54,8 @@ class WeatherRepositoryTest {
                 latitude = any(),
                 alert = any(),
                 dailySteps = any(),
-                hourlySteps = any()
+                hourlySteps = any(),
+                begin = null
             )
         } returns mockResponse
 
@@ -69,7 +74,8 @@ class WeatherRepositoryTest {
                 latitude = any(),
                 alert = any(),
                 dailySteps = any(),
-                hourlySteps = any()
+                hourlySteps = any(),
+                begin = null
             )
         } throws RuntimeException("Network error")
 
@@ -81,5 +87,68 @@ class WeatherRepositoryTest {
     @Test
     fun `CAIYUN_TOKEN is not empty`() {
         assertTrue(WeatherRepository.CAIYUN_TOKEN.isNotBlank())
+    }
+
+    @Test
+    fun `getWeather keeps current request and only merges yesterday daily`() = runTest {
+        val currentDaily = DailyForecast(status = "current")
+        val yesterdayDaily = DailyForecast(status = "yesterday")
+        val mockResponse = WeatherResponse(
+            status = "ok",
+            result = WeatherResult(daily = currentDaily)
+        )
+        val dailyResponse = WeatherResponse(
+            status = "ok",
+            result = WeatherResult(daily = yesterdayDaily)
+        )
+        coEvery {
+            api.getWeather(
+                token = any(),
+                longitude = 116.4074,
+                latitude = 39.9042,
+                alert = true,
+                dailySteps = 15,
+                hourlySteps = 48,
+                begin = null
+            )
+        } returns mockResponse
+        coEvery {
+            api.getWeather(
+                token = any(),
+                longitude = 116.4074,
+                latitude = 39.9042,
+                alert = false,
+                dailySteps = 16,
+                hourlySteps = 1,
+                begin = any()
+            )
+        } returns dailyResponse
+
+        val result = repository.getWeather(116.4074, 39.9042, includeYesterday = true)
+
+        assertTrue(result.isSuccess)
+        assertEquals("yesterday", result.getOrNull()?.result?.daily?.status)
+        coVerify(exactly = 1) {
+            api.getWeather(
+                token = any(),
+                longitude = 116.4074,
+                latitude = 39.9042,
+                alert = true,
+                dailySteps = 15,
+                hourlySteps = 48,
+                begin = null
+            )
+        }
+        coVerify(exactly = 1) {
+            api.getWeather(
+                token = any(),
+                longitude = 116.4074,
+                latitude = 39.9042,
+                alert = false,
+                dailySteps = 16,
+                hourlySteps = 1,
+                begin = any()
+            )
+        }
     }
 }

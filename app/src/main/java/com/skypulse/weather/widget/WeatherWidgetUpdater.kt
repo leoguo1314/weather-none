@@ -30,8 +30,9 @@ object WeatherWidgetUpdater {
             val skycon = realtime?.skycon
             val info = WeatherUtils.getWeatherInfo(skycon)
             val tempText = WeatherUtils.formatTemperature(realtime?.temperature)
-            val maxTemp = daily?.temperature?.firstOrNull()?.max?.let { WeatherUtils.formatTemperature(it) } ?: "--"
-            val minTemp = daily?.temperature?.firstOrNull()?.min?.let { WeatherUtils.formatTemperature(it) } ?: "--"
+            val todayTemp = WeatherUtils.todayTemperature(daily)
+            val maxTemp = todayTemp?.max?.let { WeatherUtils.formatTemperature(it) } ?: "--"
+            val minTemp = todayTemp?.min?.let { WeatherUtils.formatTemperature(it) } ?: "--"
             val cityText = shortenLocation(cityName ?: "--")
             val detailText = "${info.description}  $minTemp / $maxTemp"
             val iconBitmap = renderIcon(context, info.icon)

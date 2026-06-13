@@ -1,6 +1,8 @@
 package com.skypulse.weather.util
 
 import androidx.compose.ui.graphics.Color
+import com.skypulse.weather.model.DailyForecast
+import com.skypulse.weather.model.DailyTemperature
 import com.skypulse.weather.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
@@ -265,19 +267,16 @@ object WeatherUtils {
     }
 
     fun formatWeekday(dateStr: String?): String {
-        if (dateStr == null) return ""
         return try {
-            val date = dateFormat.get()!!.parse(dateStr) ?: return ""
+            val date = parseDateOnly(dateStr) ?: return ""
             val cal = Calendar.getInstance()
             val today = Calendar.getInstance()
             cal.time = date
 
             when {
-                cal.get(Calendar.YEAR) == today.get(Calendar.YEAR) &&
-                    cal.get(Calendar.DAY_OF_YEAR) == today.get(Calendar.DAY_OF_YEAR) -> "今天"
+                isSameDay(cal, today) -> "今天"
 
-                cal.get(Calendar.YEAR) == today.get(Calendar.YEAR) &&
-                    cal.get(Calendar.DAY_OF_YEAR) == today.get(Calendar.DAY_OF_YEAR) + 1 -> "明天"
+                isTomorrow(dateStr) -> "明天"
 
                 else -> {
                     val weekdays = arrayOf("周日", "周一", "周二", "周三", "周四", "周五", "周六")
@@ -289,22 +288,45 @@ object WeatherUtils {
         }
     }
 
+    fun todayTemperature(daily: DailyForecast?): DailyTemperature? {
+        val temperatures = daily?.temperature ?: return null
+        return temperatures.firstOrNull { isToday(it.date) } ?: temperatures.firstOrNull()
+    }
+
+    fun isToday(dateStr: String?): Boolean = isRelativeDay(dateStr, 0)
+
+    fun isYesterday(dateStr: String?): Boolean = isRelativeDay(dateStr, -1)
+
     fun isTomorrow(dateStr: String?): Boolean {
-        if (dateStr == null) return false
-        return try {
-            val date = dateFormat.get()!!.parse(dateStr) ?: return false
-            val cal = Calendar.getInstance()
-            val today = Calendar.getInstance()
-            cal.time = date
-            cal.get(Calendar.YEAR) == today.get(Calendar.YEAR) &&
-                cal.get(Calendar.DAY_OF_YEAR) == today.get(Calendar.DAY_OF_YEAR) + 1
-        } catch (e: Exception) {
-            false
-        }
+        return isRelativeDay(dateStr, 1)
     }
 
     fun isCurrentlyDay(): Boolean {
         val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
         return hour in 6..18
+    }
+
+    private fun parseDateOnly(dateStr: String?): Date? {
+        if (dateStr == null) return null
+        val dateText = dateStr.take(10)
+        return dateFormat.get()!!.parse(dateText)
+    }
+
+    private fun isRelativeDay(dateStr: String?, dayOffset: Int): Boolean {
+        return try {
+            val date = parseDateOnly(dateStr) ?: return false
+            val cal = Calendar.getInstance()
+            val target = Calendar.getInstance()
+            cal.time = date
+            target.add(Calendar.DAY_OF_YEAR, dayOffset)
+            isSameDay(cal, target)
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    private fun isSameDay(a: Calendar, b: Calendar): Boolean {
+        return a.get(Calendar.YEAR) == b.get(Calendar.YEAR) &&
+            a.get(Calendar.DAY_OF_YEAR) == b.get(Calendar.DAY_OF_YEAR)
     }
 }

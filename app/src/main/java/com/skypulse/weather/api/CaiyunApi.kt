@@ -14,6 +14,7 @@ interface CaiyunApi {
         @Path("lat") latitude: Double,
         @Query("alert") alert: Boolean = true,
         @Query("dailysteps") dailySteps: Int = 15,
-        @Query("hourlysteps") hourlySteps: Int = 48
+        @Query("hourlysteps") hourlySteps: Int = 48,
+        @Query("begin") begin: Long? = null
     ): WeatherResponse
 }

@@ -16,6 +16,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import com.skypulse.weather.ui.components.*
 import com.skypulse.weather.ui.theme.TextSecondary
+import com.skypulse.weather.util.WeatherUtils
 import com.skypulse.weather.viewmodel.RefreshPhase
 import com.skypulse.weather.viewmodel.WeatherUiState
 
@@ -38,7 +39,7 @@ internal fun WeatherContent(
 ) {
     val result = state.weather.result
     val realtime = result?.realtime
-    val todayTemp = result?.daily?.temperature?.firstOrNull()
+    val todayTemp = WeatherUtils.todayTemperature(result?.daily)
     val alerts = result?.alert?.content?.mapNotNull { content ->
         val title = content.title
             ?.replace(Regex("\\[.*?\\]"), "")

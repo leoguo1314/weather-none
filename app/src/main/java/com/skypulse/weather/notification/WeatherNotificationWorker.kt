@@ -19,6 +19,7 @@ import com.skypulse.weather.data.LocationManager
 import com.skypulse.weather.data.WeatherCache
 import com.skypulse.weather.model.City
 import com.skypulse.weather.repository.WeatherRepository
+import com.skypulse.weather.util.WeatherUtils
 import com.squareup.moshi.Moshi
 import okhttp3.OkHttpClient
 import java.text.SimpleDateFormat
@@ -82,7 +83,7 @@ class WeatherNotificationWorker(
             val windSpeed = realtime?.wind?.speed ?: 0.0
             val weatherDesc = getWeatherDesc(skycon)
             
-            val maxTemp = daily?.temperature?.firstOrNull()?.max?.toInt() ?: 0
+            val maxTemp = WeatherUtils.todayTemperature(daily)?.max?.toInt() ?: 0
 
             val minutely = weather.result?.minutely
             val minutelyDesc = minutely?.description ?: ""
@@ -127,7 +128,7 @@ class WeatherNotificationWorker(
 
             // Temperature change alert
             if (prefs.getBoolean("temp_change_alert", false)) {
-                val todayTemp = daily?.temperature?.firstOrNull()
+                val todayTemp = WeatherUtils.todayTemperature(daily)
                 maybeNotifyTemperatureChange(
                     prefs = prefs,
                     dedup = dedup,

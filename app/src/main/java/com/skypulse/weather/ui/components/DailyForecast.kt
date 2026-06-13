@@ -10,6 +10,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -77,6 +78,7 @@ fun DailyForecastCard(
 
                 temperatures.forEachIndexed { index, temp ->
                     val skycon = forecast.skycon?.getOrNull(index)?.value
+                    val isPast = WeatherUtils.isYesterday(temp.date)
                     DailyColumn(
                         dateStr = temp.date,
                         skycon = skycon,
@@ -85,7 +87,7 @@ fun DailyForecastCard(
                         minTemp = temp.min,
                         globalMin = globalMin,
                         globalMax = globalMax,
-                        isFirst = index == 0,
+                        isPast = isPast,
                         itemWidth = itemWidth
                     )
                 }
@@ -105,12 +107,13 @@ private fun DailyColumn(
     minTemp: Double?,
     globalMin: Double,
     globalMax: Double,
-    isFirst: Boolean,
+    isPast: Boolean,
     itemWidth: Dp
 ) {
     val weatherInfo = WeatherUtils.getWeatherInfo(skycon)
     val weekday = when {
-        isFirst -> "今天"
+        WeatherUtils.isYesterday(dateStr) -> "昨天"
+        WeatherUtils.isToday(dateStr) -> "今天"
         WeatherUtils.isTomorrow(dateStr) -> "明天"
         else -> WeatherUtils.formatWeekday(dateStr)
     }
@@ -118,7 +121,9 @@ private fun DailyColumn(
     val dateLabel = formatShortDate(dateStr)
 
     Column(
-        modifier = Modifier.width(itemWidth),
+        modifier = Modifier
+            .width(itemWidth)
+            .then(if (isPast) Modifier.alpha(0.46f).blur(0.7.dp) else Modifier),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // --- Date + Weekday ---

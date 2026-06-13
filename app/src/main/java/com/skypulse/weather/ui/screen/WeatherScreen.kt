@@ -390,7 +390,7 @@ private fun WeatherContentBody(
 ) {
     val result = state.weather.result
     val realtime = result?.realtime
-    val todayTemp = result?.daily?.temperature?.firstOrNull()
+    val todayTemp = WeatherUtils.todayTemperature(result?.daily)
     val alerts = result?.alert?.content?.mapNotNull { content ->
         val title = content.title
             ?.replace(Regex("\\[.*?\\]"), "")

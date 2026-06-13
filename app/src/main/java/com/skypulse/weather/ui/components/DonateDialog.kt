@@ -37,6 +37,7 @@ fun DonateDialog(
         "鸡神" to "8.8",
         "BIN0678" to "8.8",
         "微言" to "8.8",
+        "c*l" to "6.66",
         "*风" to "3"
     )
     AlertDialog(

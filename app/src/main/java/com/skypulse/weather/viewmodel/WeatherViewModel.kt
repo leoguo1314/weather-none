@@ -367,9 +367,9 @@ class WeatherViewModel @Inject constructor(
         var result: Result<WeatherResponse>? = null
         repeat(3) { attempt ->
             if (attempt > 0) delay(1000L * attempt)
-            val r = repository.getWeather(city.longitude, city.latitude)
+            val r = repository.getWeather(city.longitude, city.latitude, includeYesterday = true)
             r.fold(
-                onSuccess = { response ->
+                onSuccess = { _ ->
                     result = r
                     return@repeat
                 },
@@ -601,7 +601,7 @@ class WeatherViewModel @Inject constructor(
         var lastException: Exception? = null
         repeat(maxRetries + 1) { attempt ->
             if (attempt > 0) delay(1000L * attempt)
-            val result = repository.getWeather(lon, lat)
+            val result = repository.getWeather(lon, lat, includeYesterday = true)
             result.fold(
                 onSuccess = { return Result.success(it) },
                 onFailure = { e ->
