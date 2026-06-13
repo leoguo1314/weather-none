@@ -255,10 +255,9 @@ fun WeatherScreen(
                                                     slideOutHorizontally(tween(250)) { fullWidth -> -fullWidth * swipeDirection }
                                             },
                                             label = "city_switch"
-                                        ) { targetCityId ->
-                                            val contentState = remember(targetCityId) { state }
+                                        ) { _ ->
                                             WeatherContentBody(
-                                                state = contentState,
+                                                state = state,
                                                 scrollState = contentScrollState,
                                                 onRefresh = { viewModel.refresh() },
                                                 onAlertClick = { viewModel.navigateToAlertDetail(0) }
