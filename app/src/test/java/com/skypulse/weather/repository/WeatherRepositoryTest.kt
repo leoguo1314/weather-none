@@ -121,7 +121,7 @@ class WeatherRepositoryTest {
                 span = 16,
                 alert = true,
                 dailyStart = -1,
-                hourlySteps = 48,
+                hourlySteps = 72,
                 lang = "zh_CN",
                 version = "7.59.0"
             )
@@ -141,7 +141,7 @@ class WeatherRepositoryTest {
                 span = 16,
                 alert = true,
                 dailyStart = -1,
-                hourlySteps = 48,
+                hourlySteps = 72,
                 lang = "zh_CN",
                 version = "7.59.0"
             )

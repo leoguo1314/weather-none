@@ -33,7 +33,7 @@ class WeatherRepository @Inject constructor(
                 span = 16,
                 alert = true,
                 dailyStart = if (includeYesterday) -1 else null,
-                hourlySteps = if (includeYesterday) 48 else 24,
+                hourlySteps = if (includeYesterday) 72 else 24,
                 lang = "zh_CN",
                 version = "7.59.0"
             )
