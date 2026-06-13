@@ -298,10 +298,12 @@ fun CurrentWeather(
         // Temperature centered — tap to refresh
         val tempValue = WeatherUtils.formatTemperature(realtime?.temperature).replace("°", "")
         Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .then(
-                    if (onRefresh != null)
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.Center
+        ) {
+            Box(
+                modifier = Modifier.then(
+                    if (onRefresh != null) {
                         Modifier.clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
@@ -310,11 +312,12 @@ fun CurrentWeather(
                                 onRefresh()
                             }
                         )
-                    else Modifier
+                    } else {
+                        Modifier
+                    }
                 ),
-            contentAlignment = Alignment.Center
-        ) {
-            Box(contentAlignment = Alignment.TopEnd) {
+                contentAlignment = Alignment.TopEnd
+            ) {
                 Text(
                     text = tempValue,
                     style = MaterialTheme.typography.displayLarge.copy(
