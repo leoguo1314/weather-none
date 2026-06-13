@@ -35,6 +35,7 @@ import com.skypulse.weather.ui.theme.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ErrorOutline
 import com.skypulse.weather.util.WeatherUtils
+import com.skypulse.weather.viewmodel.CityWeatherData
 import com.skypulse.weather.viewmodel.AppScreen
 import com.skypulse.weather.viewmodel.WeatherUiState
 import com.skypulse.weather.viewmodel.CitySearchViewModel
@@ -255,9 +256,15 @@ fun WeatherScreen(
                                                     slideOutHorizontally(tween(250)) { fullWidth -> -fullWidth * swipeDirection }
                                             },
                                             label = "city_switch"
-                                        ) { _ ->
+                                        ) { targetCityId ->
+                                            val contentState = weatherStateForCityKey(
+                                                cityKey = targetCityId,
+                                                cities = savedCities,
+                                                cityWeatherMap = cityWeatherMap,
+                                                fallback = state
+                                            )
                                             WeatherContentBody(
-                                                state = state,
+                                                state = contentState,
                                                 scrollState = contentScrollState,
                                                 onRefresh = { viewModel.refresh() },
                                                 onAlertClick = { viewModel.navigateToAlertDetail(0) }
@@ -309,6 +316,22 @@ fun WeatherScreen(
             }
         }
     }
+}
+
+private fun weatherStateForCityKey(
+    cityKey: String,
+    cities: List<com.skypulse.weather.model.City>,
+    cityWeatherMap: Map<String, CityWeatherData>,
+    fallback: WeatherUiState.Success
+): WeatherUiState.Success {
+    val city = if (cityKey == "current_location") {
+        cities.find { it.isCurrentLocation }
+    } else {
+        cities.find { it.id == cityKey }
+    } ?: return fallback
+
+    val weather = cityWeatherMap[city.id]?.weather ?: return fallback
+    return WeatherUiState.Success(weather = weather, locationName = city.name)
 }
 
 // ==================== Helper Composables ====================
