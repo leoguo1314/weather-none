@@ -122,6 +122,7 @@ class WeatherViewModel @Inject constructor(
     val isLocating: StateFlow<Boolean> = _isLocating.asStateFlow()
 
     private val _lastFetchTime = MutableStateFlow(0L)
+    private val lastFetchTimesByCityId = mutableMapOf<String, Long>()
 
     // --- Update check ---
     private val _updateState = MutableStateFlow<UpdateCheckResult?>(null)
@@ -383,6 +384,7 @@ class WeatherViewModel @Inject constructor(
             val updatedMap = _cityWeatherMap.value.toMutableMap()
             (result ?: Result.failure(lastException ?: Exception("未知错误"))).fold(
                 onSuccess = { response ->
+                    markFetched(city.id)
                     updatedMap[city.id] = CityWeatherData(weather = response)
                     viewModelScope.launch(Dispatchers.IO) {
                         weatherDataStore.save(city.id, response)
@@ -402,7 +404,7 @@ class WeatherViewModel @Inject constructor(
             val result = fetchWithRetry(city.longitude, city.latitude)
             result.fold(
                 onSuccess = { response ->
-                    _lastFetchTime.value = System.currentTimeMillis()
+                    markFetched(city.id)
                     // Only update if still viewing this city
                     if (_selectedCityId.value == city.id) {
                         _uiState.value = WeatherUiState.Success(
@@ -427,7 +429,7 @@ class WeatherViewModel @Inject constructor(
             val result = fetchWithRetry(city.longitude, city.latitude)
             result.fold(
                 onSuccess = { response ->
-                    _lastFetchTime.value = System.currentTimeMillis()
+                    markFetched(city.id)
                     _uiState.value = WeatherUiState.Success(
                         weather = response,
                         locationName = city.name
@@ -502,35 +504,84 @@ class WeatherViewModel @Inject constructor(
             _isRefreshing.value = true
             _refreshPhase.value = RefreshPhase.Refreshing
             val startTime = System.currentTimeMillis()
-            val sinceLast = System.currentTimeMillis() - _lastFetchTime.value
-            if (sinceLast < API_COOLDOWN_MS) {
-                delay(800)
-            } else {
-                doFetchWeather()
-                val elapsed = System.currentTimeMillis() - startTime
-                if (elapsed < 1500) delay(1500 - elapsed)
-            }
+            val refreshCity = selectedCityForRefresh()
+            val refreshed = refreshSelectedWeather(refreshCity)
+            val elapsed = System.currentTimeMillis() - startTime
+            if (elapsed < 1500) delay(1500 - elapsed)
             _isRefreshing.value = false
-            _refreshPhase.value = RefreshPhase.Success
-            delay(2000)
-            _refreshPhase.value = RefreshPhase.Idle
+            if (refreshed) {
+                _refreshPhase.value = RefreshPhase.Success
+                delay(2000)
+                _refreshPhase.value = RefreshPhase.Idle
+            } else {
+                _refreshPhase.value = RefreshPhase.Idle
+            }
         }
     }
 
     fun silentRefresh() {
         viewModelScope.launch {
-            val sinceLast = System.currentTimeMillis() - _lastFetchTime.value
-            if (sinceLast >= API_COOLDOWN_MS) {
-                doFetchWeather(silent = true)
+            val refreshCity = selectedCityForRefresh()
+            val sinceLast = System.currentTimeMillis() - lastFetchTimeFor(refreshCity)
+            val refreshed = if (sinceLast >= API_COOLDOWN_MS) {
+                refreshSelectedWeather(refreshCity, silent = true)
+            } else {
+                false
             }
-            _refreshPhase.value = RefreshPhase.Success
-            delay(2000)
-            _refreshPhase.value = RefreshPhase.Idle
+            if (refreshed) {
+                _refreshPhase.value = RefreshPhase.Success
+                delay(2000)
+                _refreshPhase.value = RefreshPhase.Idle
+            }
         }
     }
 
-    private suspend fun doFetchWeather(silent: Boolean = false) {
-        try {
+    private suspend fun refreshSelectedWeather(
+        city: City?,
+        silent: Boolean = false
+    ): Boolean {
+        return if (city != null && !city.isCurrentLocation) {
+            refreshSavedCity(city, silent)
+        } else {
+            doFetchWeather(silent)
+        }
+    }
+
+    private suspend fun refreshSavedCity(
+        city: City,
+        silent: Boolean
+    ): Boolean {
+        val result = fetchWithRetry(city.longitude, city.latitude)
+        return result.fold(
+            onSuccess = { response ->
+                markFetched(city.id)
+                _cityWeatherMap.value = _cityWeatherMap.value.toMutableMap().apply {
+                    put(city.id, CityWeatherData(weather = response))
+                }
+                weatherDataStore.save(city.id, response)
+                weatherCache.save(city.id, response)
+                if (_selectedCityId.value == city.id) {
+                    _uiState.value = WeatherUiState.Success(
+                        weather = response,
+                        locationName = city.name
+                    )
+                }
+                true
+            },
+            onFailure = { e ->
+                _cityWeatherMap.value = _cityWeatherMap.value.toMutableMap().apply {
+                    put(city.id, CityWeatherData(error = mapError(e)))
+                }
+                if (!silent || _uiState.value !is WeatherUiState.Success) {
+                    _uiState.value = WeatherUiState.Error(mapError(e))
+                }
+                false
+            }
+        )
+    }
+
+    private suspend fun doFetchWeather(silent: Boolean = false): Boolean {
+        return try {
             val amapLocation = locationManager.requestAmapLocation()
 
             if (amapLocation != null) {
@@ -544,17 +595,19 @@ class WeatherViewModel @Inject constructor(
             } else {
                 if (silent && _uiState.value is WeatherUiState.Success) {
                     Log.w(TAG, "Silent refresh location failed, keeping cached data")
-                    return
+                    return false
                 }
                 val diagnostic = getLocationDiagnostic()
                 _uiState.value = WeatherUiState.Error(
                     diagnostic ?: "无法获取定位，请到室外或靠近窗户重试。如持续失败可使用\"刷新\"按钮重试"
                 )
+                false
             }
         } catch (e: Exception) {
             if (!silent || _uiState.value !is WeatherUiState.Success) {
                 _uiState.value = WeatherUiState.Error("获取天气数据失败，请稍后重试")
             }
+            false
         }
     }
 
@@ -563,12 +616,12 @@ class WeatherViewModel @Inject constructor(
         lat: Double,
         locationName: String,
         silent: Boolean = false
-    ) {
+    ): Boolean {
         val result = fetchWithRetry(lon, lat)
-        result.fold(
+        return result.fold(
             onSuccess = { response ->
-                _lastFetchTime.value = System.currentTimeMillis()
                 val currentCity = _savedCities.value.find { it.isCurrentLocation }
+                markFetched(currentCity?.id)
                 if (currentCity != null) {
                     weatherDataStore.save(currentCity.id, response)
                     weatherCache.save(currentCity.id, response)
@@ -585,14 +638,39 @@ class WeatherViewModel @Inject constructor(
                         locationName = locationName
                     )
                 }
+                true
             },
             onFailure = { e ->
                 if (!silent || _uiState.value !is WeatherUiState.Success) {
                     _uiState.value = WeatherUiState.Error(mapError(e))
                 }
+                false
             }
         )
     }
+
+    private fun selectedCityForRefresh(): City? {
+        val selectedId = _selectedCityId.value
+        return if (selectedId == null) {
+            _savedCities.value.find { it.isCurrentLocation }
+        } else {
+            _savedCities.value.find { it.id == selectedId }
+        }
+    }
+
+    private fun lastFetchTimeFor(city: City?): Long {
+        val cityId = city?.id ?: return _lastFetchTime.value
+        return lastFetchTimesByCityId[cityId] ?: 0L
+    }
+
+    private fun markFetched(cityId: String?) {
+        val now = System.currentTimeMillis()
+        _lastFetchTime.value = now
+        if (cityId != null) {
+            lastFetchTimesByCityId[cityId] = now
+        }
+    }
+
     private suspend fun fetchWithRetry(
         lon: Double,
         lat: Double,

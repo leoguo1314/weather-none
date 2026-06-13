@@ -2,19 +2,23 @@ package com.skypulse.weather.api
 
 import com.skypulse.weather.model.WeatherResponse
 import retrofit2.http.GET
+import retrofit2.http.Headers
 import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface CaiyunApi {
 
+    @Headers("User-Agent: weather/7.59.0 (Xiaomi:M2006C3LC; android/13)")
     @GET("v2.7/{token}/{lon},{lat}/weather")
     suspend fun getWeather(
         @Path("token") token: String,
         @Path("lon") longitude: Double,
         @Path("lat") latitude: Double,
+        @Query("span") span: Int = 16,
         @Query("alert") alert: Boolean = true,
-        @Query("dailysteps") dailySteps: Int = 15,
-        @Query("hourlysteps") hourlySteps: Int = 48,
-        @Query("begin") begin: Long? = null
+        @Query("dailystart") dailyStart: Int? = null,
+        @Query("hourlysteps") hourlySteps: Int = 24,
+        @Query("lang") lang: String = "zh_CN",
+        @Query("version") version: String = "7.59.0"
     ): WeatherResponse
 }
