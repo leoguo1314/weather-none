@@ -123,6 +123,7 @@ class WeatherViewModel @Inject constructor(
 
     private val _lastFetchTime = MutableStateFlow(0L)
     private val lastFetchTimesByCityId = mutableMapOf<String, Long>()
+    private val refreshingCityIds = mutableSetOf<String>()
 
     // --- Update check ---
     private val _updateState = MutableStateFlow<UpdateCheckResult?>(null)
@@ -245,6 +246,7 @@ class WeatherViewModel @Inject constructor(
                 weather = cached.weather,
                 locationName = city.name
             )
+            refreshCityAfterSwitch(city)
         } else {
             // No cache — keep old data visible, fetch silently
             fetchWeatherForCitySilent(city)
@@ -420,6 +422,23 @@ class WeatherViewModel @Inject constructor(
                 },
                 onFailure = { _ -> }
             )
+        }
+    }
+
+    private fun refreshCityAfterSwitch(city: City) {
+        val sinceLast = System.currentTimeMillis() - lastFetchTimeFor(city)
+        if (sinceLast < API_COOLDOWN_MS || refreshingCityIds.contains(city.id)) return
+        viewModelScope.launch {
+            refreshingCityIds.add(city.id)
+            try {
+                if (city.isCurrentLocation) {
+                    doFetchWeather(silent = true)
+                } else {
+                    refreshSavedCity(city, silent = true)
+                }
+            } finally {
+                refreshingCityIds.remove(city.id)
+            }
         }
     }
 
