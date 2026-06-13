@@ -123,7 +123,7 @@ private fun DailyColumn(
     Column(
         modifier = Modifier
             .width(itemWidth)
-            .then(if (isPast) Modifier.alpha(0.46f).blur(0.7.dp) else Modifier),
+            .then(if (isPast) Modifier.alpha(0.52f).blur(0.45.dp) else Modifier),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // --- Date + Weekday ---
