@@ -242,26 +242,15 @@ object WeatherWidgetUpdater {
         return if (segment.length > 4) segment.substring(0, 4) else segment
     }
 
-    /**
-     * Get widget size in pixels, forced to 1:1 aspect ratio.
-     *
-     * Different OEM launchers report different OPTION_APPWIDGET_MAX_WIDTH / MAX_HEIGHT
-     * for the same logical 2x2 cell (e.g. OPPO reports ~180x180dp, some others report
-     * 180x195dp).  To guarantee a square background across all devices, we take the
-     * smaller of the two dimensions and use it for both width and height.
-     */
     private fun getWidgetSizePx(context: Context, widgetId: Int): Pair<Int, Int> {
         val manager = AppWidgetManager.getInstance(context)
         val options = manager.getAppWidgetOptions(widgetId)
         val widthDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, 180)
-        val heightDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 180)
+        val heightDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 100)
         val density = context.resources.displayMetrics.density
-        // Force 1:1 aspect ratio by using the smaller dimension for both sides.
-        // This prevents the background bitmap from being stretched into a rectangle
-        // on launchers that report unequal width/height for a 2x2 widget.
-        val sideDp = minOf(widthDp, heightDp)
-        val side = (sideDp * density).toInt().coerceIn(200, 800)
-        return side to side
+        val width = (widthDp * density).toInt().coerceIn(200, 800)
+        val height = (heightDp * density).toInt().coerceIn(100, 500)
+        return width to height
     }
 
     private fun renderIcon(context: Context, icon: String, precipitationColor: Int? = null): Bitmap? {
