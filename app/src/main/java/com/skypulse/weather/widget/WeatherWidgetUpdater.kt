@@ -245,11 +245,18 @@ object WeatherWidgetUpdater {
     private fun getWidgetSizePx(context: Context, widgetId: Int): Pair<Int, Int> {
         val manager = AppWidgetManager.getInstance(context)
         val options = manager.getAppWidgetOptions(widgetId)
-        val widthDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, 180)
-        val heightDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 100)
         val density = context.resources.displayMetrics.density
-        val width = (widthDp * density).toInt().coerceIn(200, 800)
-        val height = (heightDp * density).toInt().coerceIn(100, 500)
+
+        // Use MIN width/height for more consistent sizing across launchers
+        // MIN is closer to the actual cell size, MAX can be much larger
+        val widthDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 110)
+        val heightDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 110)
+
+        // Convert to pixels with reasonable bounds
+        val width = (widthDp * density).toInt().coerceIn(300, 600)
+        val height = (heightDp * density).toInt().coerceIn(300, 600)
+
+        FileLogger.d(TAG, "getWidgetSizePx: widgetId=$widgetId, widthDp=$widthDp, heightDp=$heightDp, width=$width, height=$height, density=$density")
         return width to height
     }
 
