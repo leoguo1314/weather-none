@@ -580,9 +580,11 @@ object WeatherWidgetUpdater {
             val dailySkycons = daily?.skycon
 
             // Find today's index in the daily data
+            // API returns dates like "2026-07-19T00:00+08:00", so we need to match by prefix
             val todayDate = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
-            val todayTempIndex = dailyTemps?.indexOfFirst { it.date == todayDate }?.coerceAtLeast(0) ?: 0
-            val todaySkyconIndex = dailySkycons?.indexOfFirst { it.date == todayDate }?.coerceAtLeast(0) ?: 0
+            val todayTempIndex = dailyTemps?.indexOfFirst { it.date?.startsWith(todayDate) == true }?.coerceAtLeast(0) ?: 0
+            val todaySkyconIndex = dailySkycons?.indexOfFirst { it.date?.startsWith(todayDate) == true }?.coerceAtLeast(0) ?: 0
+            FileLogger.i(TAG, "updateMediumAll: todayDate=$todayDate, todayTempIndex=$todayTempIndex, todaySkyconIndex=$todaySkyconIndex, firstTempDate=${dailyTemps?.firstOrNull()?.date}")
 
             // White color for rain icons
             val whitePrecipColor = android.graphics.Color.WHITE
