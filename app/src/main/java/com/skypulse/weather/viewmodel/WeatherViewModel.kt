@@ -1,4 +1,4 @@
-package com.skypulse.weather.viewmodel
+﻿package com.skypulse.weather.viewmodel
 
 import android.content.Context
 import android.util.Log
