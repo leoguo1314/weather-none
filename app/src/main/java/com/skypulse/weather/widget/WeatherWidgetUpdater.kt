@@ -1,4 +1,4 @@
-﻿package com.skypulse.weather.widget
+package com.skypulse.weather.widget
 
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
@@ -51,14 +51,14 @@ object WeatherWidgetUpdater {
                 val (w, h) = getWidgetSizePx(context, widgetId)
                 val sizedBg = buildGradientBitmap(context, null, w, h)
                 views.setImageViewBitmap(R.id.widget_bg, sizedBg)
-                                views.setBoolean(R.id.widget_root, "setClipToOutline", true)
-                views.setInt(R.id.widget_root, "setBackgroundResource", R.drawable.widget_rounded_bg)
+                                views.setBoolean(R.id.widget_container, "setClipToOutline", true)
+                views.setInt(R.id.widget_container, "setBackgroundResource", R.drawable.widget_rounded_bg)
 
                 val intent = Intent(context, MainActivity::class.java)
                 val pending = PendingIntent.getActivity(
                     context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                 )
-                views.setOnClickPendingIntent(R.id.widget_root, pending)
+                views.setOnClickPendingIntent(R.id.widget_container, pending)
                 manager.updateAppWidget(widgetId, views)
             }
             FileLogger.i(TAG, "updateLoading: \u6e32\u67d3\u5b9a\u4f4d\u5360\u4f4d\u6001\u5b8c\u6210, widgetCount=${ids.size}")
@@ -161,14 +161,14 @@ object WeatherWidgetUpdater {
                 val (w, h) = getWidgetSizePx(context, widgetId)
                 val sizedBg = buildGradientBitmap(context, skycon, w, h, isDay)
                 views.setImageViewBitmap(R.id.widget_bg, sizedBg)
-                                views.setBoolean(R.id.widget_root, "setClipToOutline", true)
-                views.setInt(R.id.widget_root, "setBackgroundResource", R.drawable.widget_rounded_bg)
+                                views.setBoolean(R.id.widget_container, "setClipToOutline", true)
+                views.setInt(R.id.widget_container, "setBackgroundResource", R.drawable.widget_rounded_bg)
 
                 val intent = Intent(context, MainActivity::class.java)
                 val pending = PendingIntent.getActivity(
                     context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                 )
-                views.setOnClickPendingIntent(R.id.widget_root, pending)
+                views.setOnClickPendingIntent(R.id.widget_container, pending)
                 manager.updateAppWidget(widgetId, views)
             }
             FileLogger.i(TAG, "updateAll: \u6e32\u67d3\u5b8c\u6210, widgetCount=${ids.size}")
@@ -191,11 +191,11 @@ object WeatherWidgetUpdater {
                         val (w, h) = getWidgetSizePx(context, widgetId)
                         val sizedBg = buildGradientBitmap(context, null, w, h)
                         views.setImageViewBitmap(R.id.widget_bg, sizedBg)
-                                                views.setBoolean(R.id.widget_root, "setClipToOutline", true)
-                        views.setInt(R.id.widget_root, "setBackgroundResource", R.drawable.widget_rounded_bg)
+                                                views.setBoolean(R.id.widget_container, "setClipToOutline", true)
+                        views.setInt(R.id.widget_container, "setBackgroundResource", R.drawable.widget_rounded_bg)
                         val intent = Intent(context, MainActivity::class.java)
                         val pending = PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-                        views.setOnClickPendingIntent(R.id.widget_root, pending)
+                        views.setOnClickPendingIntent(R.id.widget_container, pending)
                         manager.updateAppWidget(widgetId, views)
                     } catch (_: Exception) {}
                 }

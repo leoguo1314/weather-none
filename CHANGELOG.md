@@ -70,3 +70,7 @@
 ## [3.2.37] - 2026-07-15
 
 - Remove no-location mode; require location permission
+
+## [3.2.74] - 2026-07-18
+
+- Fix widget margins layout and missing app label
