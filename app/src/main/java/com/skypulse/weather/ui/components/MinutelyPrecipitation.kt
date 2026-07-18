@@ -12,9 +12,9 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.time.LocalTime
@@ -87,128 +87,148 @@ private fun MinutelyBarChart(
     data: List<Double>,
     modifier: Modifier = Modifier
 ) {
-    // Light(0-2.5)→0-40%, Moderate(2.5-8)→40-70%, Heavy(8-16)→70-90%, Torrential(16+)→90-100%
-    // 0->0%, 0.1->16%, 0.5->50%, 1.0->65%, 2.5->91%, 4.0->97%, 6.0+->100%
-
     val barWidthDp = BAR_WIDTH_DP.dp
     val barGapDp = BAR_GAP_DP.dp
     val chartHeightDp = CHART_HEIGHT_DP.dp
 
+    // Pre-calculate bar dimensions in px for alignment
+    val density = LocalDensity.current
+    val barWidthPx = with(density) { barWidthDp.toPx() }
+    val barGapPx = with(density) { barGapDp.toPx() }
+
     Column(modifier = modifier) {
-        Canvas(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(chartHeightDp)
-        ) {
-            val barCount = data.size
-            val barW = barWidthDp.toPx()
-            val gapW = barGapDp.toPx()
-            val step = barW + gapW
-            val chartW = size.width
-            val chartH = size.height
-            val corner = CornerRadius(barW / 2f)
+        // Use BoxWithConstraints to get container width and calculate bar alignment
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            val containerWidthPx = with(density) { maxWidth.toPx() }
+            val totalBarWidthPx = data.size * barWidthPx + (data.size - 1) * barGapPx
+            val startX = ((containerWidthPx - totalBarWidthPx) / 2f).coerceAtLeast(0f)
+            val endX = startX + totalBarWidthPx
 
-            val totalW = barCount * barW + (barCount - 1) * gapW
-            val startX = ((chartW - totalW) / 2f).coerceAtLeast(0f)
+            // Convert alignment positions to Dp for layout
+            val startPaddingDp = with(density) { startX.toDp() }
+            val endPaddingDp = with(density) { (containerWidthPx - endX).toDp() }
 
-            val grayFrame = Color.White.copy(alpha = 0.12f)
+            Column {
+                // Bar chart canvas
+                Canvas(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(chartHeightDp)
+                ) {
+                    val barCount = data.size
+                    val barW = barWidthPx
+                    val gapW = barGapPx
+                    val step = barW + gapW
+                    val chartH = size.height
+                    val corner = CornerRadius(barW / 2f)
 
-            for (i in 0 until barCount) {
-                val value = data[i]
-                // Scale aligned with Chinese meteorological standards:
-                // Light: 0-2.5mm/h → 0-40%, Moderate: 2.5-8mm/h → 40-70%,
-                // Heavy: 8-16mm/h → 70-90%, Torrential: 16-30mm/h → 90-100%
-                // Scale aligned with Chinese meteorological standards (mm/h):
-                // Light(0-2.5)→0-38%, Moderate(2.5-8)→38-70%, Heavy(8-16)→70-90%, Torrential(16+)→90-100%
-                val fillRatio = when {
-                    value <= 0.0 -> 0f
-                    value <= 0.1 -> (value / 0.1 * 0.03f).toFloat()                   // 0%~3%
-                    value <= 0.3 -> (0.03f + (value - 0.1) / 0.2 * 0.05f).toFloat()   // 3%~8%
-                    value <= 0.5 -> (0.08f + (value - 0.3) / 0.2 * 0.07f).toFloat()   // 8%~15%
-                    value <= 1.0 -> (0.15f + (value - 0.5) / 0.5 * 0.07f).toFloat()   // 15%~22%
-                    value <= 2.0 -> (0.22f + (value - 1.0) / 1.0 * 0.10f).toFloat()   // 22%~32%
-                    value <= 2.5 -> (0.32f + (value - 2.0) / 0.5 * 0.06f).toFloat()   // 32%~38%
-                    value <= 8.0 -> (0.38f + (value - 2.5) / 5.5 * 0.32f).toFloat()   // 38%~70%
-                    value <= 16.0 -> (0.70f + (value - 8.0) / 8.0 * 0.20f).toFloat()  // 70%~90%
-                    else -> (0.90f + (value - 16.0) / 14.0 * 0.10f).coerceIn(0.90, 1.0).toFloat() // 90%~100%
-                }
-                // Power curve: expand light rain visual area, compress heavy rain
-                val visualRatio = if (fillRatio > 0f) fillRatio.pow(0.70f) else 0f
-                val left = startX + i * step
-                val fillH = chartH * visualRatio
-                val fillTop = chartH - fillH
+                    val grayFrame = Color.White.copy(alpha = 0.12f)
 
-                // Gray frame (full height, always visible)
-                drawRoundRect(
-                    color = grayFrame,
-                    topLeft = Offset(left, 0f),
-                    size = Size(barW, chartH),
-                    cornerRadius = corner
-                )
+                    for (i in 0 until barCount) {
+                        val value = data[i]
+                        // Scale aligned with Chinese meteorological standards:
+                        // Light(0-2.5)→0-38%, Moderate(2.5-8)→38-70%, Heavy(8-16)→70-90%, Torrential(16+)→90-100%
+                        val fillRatio = when {
+                            value <= 0.0 -> 0f
+                            value <= 0.1 -> (value / 0.1 * 0.03f).toFloat()
+                            value <= 0.3 -> (0.03f + (value - 0.1) / 0.2 * 0.05f).toFloat()
+                            value <= 0.5 -> (0.08f + (value - 0.3) / 0.2 * 0.07f).toFloat()
+                            value <= 1.0 -> (0.15f + (value - 0.5) / 0.5 * 0.07f).toFloat()
+                            value <= 2.0 -> (0.22f + (value - 1.0) / 1.0 * 0.10f).toFloat()
+                            value <= 2.5 -> (0.32f + (value - 2.0) / 0.5 * 0.06f).toFloat()
+                            value <= 8.0 -> (0.38f + (value - 2.5) / 5.5 * 0.32f).toFloat()
+                            value <= 16.0 -> (0.70f + (value - 8.0) / 8.0 * 0.20f).toFloat()
+                            else -> (0.90f + (value - 16.0) / 14.0 * 0.10f).coerceIn(0.90, 1.0).toFloat()
+                        }
+                        val visualRatio = if (fillRatio > 0f) fillRatio.pow(0.70f) else 0f
+                        val left = startX + i * step
+                        val fillH = chartH * visualRatio
+                        val fillTop = chartH - fillH
 
-                // Soft halo + blue fill for bars with precipitation
-                if (visualRatio > 0f) {
-                    val shadowAlpha = (0.08f + 0.14f * visualRatio).coerceIn(0.08f, 0.22f)
-                    val shadowColor = PrecipBarShadow.copy(alpha = shadowAlpha)
-                    for (s in 1..2) {
-                        val expand = s * 0.6f
+                        // Gray frame
                         drawRoundRect(
-                            color = shadowColor,
-                            topLeft = Offset(left - expand, fillTop - expand * 0.5f),
-                            size = Size(barW + expand * 2, fillH + expand),
-                            cornerRadius = CornerRadius(barW / 2f + expand)
+                            color = grayFrame,
+                            topLeft = Offset(left, 0f),
+                            size = Size(barW, chartH),
+                            cornerRadius = corner
                         )
-                    }
 
-                    // Vertical gradient: brighter at top, normal at bottom
-                    val topAlpha = (0.7f + 0.3f * visualRatio).coerceIn(0.7f, 1f)
-                    val bottomAlpha = (0.4f + 0.6f * visualRatio).coerceIn(0.4f, 1f)
-                    val gradientBrush = Brush.verticalGradient(
-                        colors = listOf(
-                            PrecipBarTop.copy(alpha = topAlpha),
-                            PrecipBarBottom.copy(alpha = bottomAlpha)
-                        ),
-                        startY = fillTop,
-                        endY = fillTop + fillH
+                        // Soft halo + blue fill
+                        if (visualRatio > 0f) {
+                            val shadowAlpha = (0.08f + 0.14f * visualRatio).coerceIn(0.08f, 0.22f)
+                            val shadowColor = PrecipBarShadow.copy(alpha = shadowAlpha)
+                            for (s in 1..2) {
+                                val expand = s * 0.6f
+                                drawRoundRect(
+                                    color = shadowColor,
+                                    topLeft = Offset(left - expand, fillTop - expand * 0.5f),
+                                    size = Size(barW + expand * 2, fillH + expand),
+                                    cornerRadius = CornerRadius(barW / 2f + expand)
+                                )
+                            }
+
+                            val topAlpha = (0.7f + 0.3f * visualRatio).coerceIn(0.7f, 1f)
+                            val bottomAlpha = (0.4f + 0.6f * visualRatio).coerceIn(0.4f, 1f)
+                            val gradientBrush = Brush.verticalGradient(
+                                colors = listOf(
+                                    PrecipBarTop.copy(alpha = topAlpha),
+                                    PrecipBarBottom.copy(alpha = bottomAlpha)
+                                ),
+                                startY = fillTop,
+                                endY = fillTop + fillH
+                            )
+                            drawRoundRect(
+                                brush = gradientBrush,
+                                topLeft = Offset(left, fillTop),
+                                size = Size(barW, fillH),
+                                cornerRadius = corner
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Time labels aligned with chart edges
+                val fmt = DateTimeFormatter.ofPattern("HH:mm")
+                val now = LocalTime.now()
+                val t0 = now.format(fmt)
+                val t1 = now.plusHours(1).format(fmt)
+                val t2 = now.plusHours(2).format(fmt)
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    // Left spacer to align with chart left edge
+                    Spacer(modifier = Modifier.width(startPaddingDp))
+
+                    Text(
+                        text = t0,
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 13.sp),
+                        color = TextSecondary
                     )
-                    drawRoundRect(
-                        brush = gradientBrush,
-                        topLeft = Offset(left, fillTop),
-                        size = Size(barW, fillH),
-                        cornerRadius = corner
+
+                    Spacer(modifier = Modifier.weight(1f))
+
+                    Text(
+                        text = t1,
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 13.sp),
+                        color = TextSecondary
                     )
+
+                    Spacer(modifier = Modifier.weight(1f))
+
+                    Text(
+                        text = t2,
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 13.sp),
+                        color = TextSecondary
+                    )
+
+                    // Right spacer to align with chart right edge
+                    Spacer(modifier = Modifier.width(endPaddingDp))
                 }
             }
-        }
-
-        Spacer(modifier = Modifier.height(4.dp))
-
-        // Time labels: now, +1h, +2h
-        val fmt = DateTimeFormatter.ofPattern("HH:mm")
-        val now = LocalTime.now()
-        val t0 = now.format(fmt)
-        val t1 = now.plusHours(1).format(fmt)
-        val t2 = now.plusHours(2).format(fmt)
-
-        Box(modifier = Modifier.fillMaxWidth()) {
-            Text(
-                text = t0,
-                style = MaterialTheme.typography.labelSmall.copy(fontSize = 13.sp),
-                color = TextSecondary,
-                modifier = Modifier.align(BiasAlignment(-1f, 0f))
-            )
-            Text(
-                text = t1,
-                style = MaterialTheme.typography.labelSmall.copy(fontSize = 13.sp),
-                color = TextSecondary,
-                modifier = Modifier.align(BiasAlignment(0f, 0f))
-            )
-            Text(
-                text = t2,
-                style = MaterialTheme.typography.labelSmall.copy(fontSize = 13.sp),
-                color = TextSecondary,
-                modifier = Modifier.align(BiasAlignment(1f, 0f))
-            )
         }
     }
 }
