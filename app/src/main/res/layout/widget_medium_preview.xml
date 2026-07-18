@@ -21,7 +21,7 @@
             android:src="@drawable/widget_preview_bg"
             android:contentDescription="@null" />
 
-        <!-- Top section: City+Temp left, Wind+Humidity middle, Weather+Icon right -->
+        <!-- Top section -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -30,31 +30,50 @@
             android:layout_marginStart="14dp"
             android:layout_marginEnd="14dp"
             android:orientation="horizontal"
-            android:gravity="center_vertical"
+            android:gravity="bottom"
             android:baselineAligned="false">
 
-            <!-- Left: City + Temperature -->
+            <!-- Left: Location icon + City + Temperature -->
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:gravity="start">
+                android:gravity="start|bottom">
 
-                <TextView
+                <!-- City with location icon -->
+                <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="北京市"
-                    android:textColor="#EEFFFFFF"
-                    android:textSize="12sp"
-                    android:fontFamily="sans-serif-medium"
-                    android:maxLines="1"
-                    android:ellipsize="end"
-                    android:includeFontPadding="false" />
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginStart="5dp"
+                    android:translationY="3dp">
+
+                    <ImageView
+                        android:layout_width="12dp"
+                        android:layout_height="12dp"
+                        android:src="@drawable/ic_widget_location"
+                        android:scaleType="fitCenter"
+                        android:contentDescription="@null" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="2dp"
+                        android:text="北京市"
+                        android:textColor="#EEFFFFFF"
+                        android:textSize="12sp"
+                        android:fontFamily="sans-serif-medium"
+                        android:maxLines="1"
+                        android:ellipsize="end"
+                        android:includeFontPadding="false" />
+                </LinearLayout>
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="-2dp"
+                    android:translationY="6dp"
                     android:text="26°"
                     android:textColor="@android:color/white"
                     android:textSize="42sp"
@@ -65,77 +84,82 @@
                     android:singleLine="true" />
             </LinearLayout>
 
-            <!-- Middle: Wind + Humidity (vertical matrix) -->
+            <!-- Middle: Wind + Humidity + AQI + UV -->
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:orientation="vertical"
-                android:gravity="center_vertical"
-                android:layout_marginStart="12dp">
+                android:orientation="horizontal"
+                android:gravity="bottom"
+                android:layout_marginStart="16dp"
+                android:layout_marginBottom="5dp"
+                android:translationY="3dp">
 
-                <!-- Wind -->
+                <!-- Left column: Wind + Humidity -->
                 <LinearLayout
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical">
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:gravity="start">
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="风力 "
-                        android:textColor="#BBFFFFFF"
-                        android:textSize="11sp"
+                        android:text="南风 2级"
+                        android:textColor="#DDFFFFFF"
+                        android:textSize="12sp"
                         android:fontFamily="sans-serif-medium"
                         android:includeFontPadding="false" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="东南风3级"
-                        android:textColor="@android:color/white"
-                        android:textSize="11sp"
+                        android:layout_marginTop="2dp"
+                        android:text="湿度 89%"
+                        android:textColor="#DDFFFFFF"
+                        android:textSize="12sp"
                         android:fontFamily="sans-serif-medium"
-                        android:textStyle="bold"
                         android:includeFontPadding="false" />
                 </LinearLayout>
 
-                <!-- Humidity -->
+                <!-- Right column: AQI + UV -->
                 <LinearLayout
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:layout_marginTop="4dp">
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:gravity="start"
+                    android:layout_marginStart="8dp">
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="湿度 "
-                        android:textColor="#BBFFFFFF"
-                        android:textSize="11sp"
+                        android:text="空气 优"
+                        android:textColor="#DDFFFFFF"
+                        android:textSize="12sp"
                         android:fontFamily="sans-serif-medium"
                         android:includeFontPadding="false" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="65%"
-                        android:textColor="@android:color/white"
-                        android:textSize="11sp"
+                        android:layout_marginTop="2dp"
+                        android:text="紫外线 弱"
+                        android:textColor="#DDFFFFFF"
+                        android:textSize="12sp"
                         android:fontFamily="sans-serif-medium"
-                        android:textStyle="bold"
                         android:includeFontPadding="false" />
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- Right: Weather condition + Icon -->
+            <!-- Right: Weather icon + description -->
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:gravity="center_horizontal">
+                android:gravity="center_horizontal|bottom"
+                android:layout_marginBottom="2dp">
 
                 <ImageView
                     android:layout_width="34dp"
@@ -150,7 +174,7 @@
                     android:layout_marginTop="-2dp"
                     android:text="多云"
                     android:textColor="#EEFFFFFF"
-                    android:textSize="10sp"
+                    android:textSize="12sp"
                     android:fontFamily="sans-serif-medium"
                     android:maxLines="1"
                     android:includeFontPadding="false" />
@@ -163,7 +187,7 @@
             android:layout_height="wrap_content"
             android:layout_gravity="bottom"
             android:layout_marginBottom="10dp"
-            android:layout_marginStart="7dp"
+            android:layout_marginStart="10dp"
             android:layout_marginEnd="10dp"
             android:orientation="horizontal"
             android:weightSum="5">
@@ -181,13 +205,13 @@
                     android:layout_height="wrap_content"
                     android:text="今天"
                     android:textColor="#BBFFFFFF"
-                    android:textSize="10sp"
+                    android:textSize="11sp"
                     android:fontFamily="sans-serif-medium"
                     android:includeFontPadding="false" />
 
                 <ImageView
-                    android:layout_width="26dp"
-                    android:layout_height="26dp"
+                    android:layout_width="27dp"
+                    android:layout_height="27dp"
                     android:layout_marginTop="-1dp"
                     android:scaleType="fitCenter"
                     android:src="@drawable/ic_widget_preview_sun"
@@ -197,7 +221,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="-1dp"
-                    android:text="18°/26°"
+                    android:text="18° 26°"
                     android:textColor="@android:color/white"
                     android:textSize="11sp"
                     android:fontFamily="sans-serif-medium"
@@ -218,13 +242,13 @@
                     android:layout_height="wrap_content"
                     android:text="明天"
                     android:textColor="#BBFFFFFF"
-                    android:textSize="10sp"
+                    android:textSize="11sp"
                     android:fontFamily="sans-serif-medium"
                     android:includeFontPadding="false" />
 
                 <ImageView
-                    android:layout_width="26dp"
-                    android:layout_height="26dp"
+                    android:layout_width="27dp"
+                    android:layout_height="27dp"
                     android:layout_marginTop="-1dp"
                     android:scaleType="fitCenter"
                     android:src="@drawable/ic_widget_preview_sun"
@@ -234,7 +258,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="-1dp"
-                    android:text="17°/25°"
+                    android:text="17° 25°"
                     android:textColor="@android:color/white"
                     android:textSize="11sp"
                     android:fontFamily="sans-serif-medium"
@@ -255,13 +279,13 @@
                     android:layout_height="wrap_content"
                     android:text="周六"
                     android:textColor="#BBFFFFFF"
-                    android:textSize="10sp"
+                    android:textSize="11sp"
                     android:fontFamily="sans-serif-medium"
                     android:includeFontPadding="false" />
 
                 <ImageView
-                    android:layout_width="26dp"
-                    android:layout_height="26dp"
+                    android:layout_width="27dp"
+                    android:layout_height="27dp"
                     android:layout_marginTop="-1dp"
                     android:scaleType="fitCenter"
                     android:src="@drawable/ic_widget_preview_sun"
@@ -271,7 +295,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="-1dp"
-                    android:text="19°/27°"
+                    android:text="19° 27°"
                     android:textColor="@android:color/white"
                     android:textSize="11sp"
                     android:fontFamily="sans-serif-medium"
@@ -292,13 +316,13 @@
                     android:layout_height="wrap_content"
                     android:text="周日"
                     android:textColor="#BBFFFFFF"
-                    android:textSize="10sp"
+                    android:textSize="11sp"
                     android:fontFamily="sans-serif-medium"
                     android:includeFontPadding="false" />
 
                 <ImageView
-                    android:layout_width="26dp"
-                    android:layout_height="26dp"
+                    android:layout_width="27dp"
+                    android:layout_height="27dp"
                     android:layout_marginTop="-1dp"
                     android:scaleType="fitCenter"
                     android:src="@drawable/ic_widget_preview_sun"
@@ -308,7 +332,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="-1dp"
-                    android:text="16°/24°"
+                    android:text="16° 24°"
                     android:textColor="@android:color/white"
                     android:textSize="11sp"
                     android:fontFamily="sans-serif-medium"
@@ -329,13 +353,13 @@
                     android:layout_height="wrap_content"
                     android:text="周一"
                     android:textColor="#BBFFFFFF"
-                    android:textSize="10sp"
+                    android:textSize="11sp"
                     android:fontFamily="sans-serif-medium"
                     android:includeFontPadding="false" />
 
                 <ImageView
-                    android:layout_width="26dp"
-                    android:layout_height="26dp"
+                    android:layout_width="27dp"
+                    android:layout_height="27dp"
                     android:layout_marginTop="-1dp"
                     android:scaleType="fitCenter"
                     android:src="@drawable/ic_widget_preview_sun"
@@ -345,7 +369,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="-1dp"
-                    android:text="18°/26°"
+                    android:text="18° 26°"
                     android:textColor="@android:color/white"
                     android:textSize="11sp"
                     android:fontFamily="sans-serif-medium"

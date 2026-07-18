@@ -579,6 +579,11 @@ object WeatherWidgetUpdater {
             val dailyTemps = daily?.temperature
             val dailySkycons = daily?.skycon
 
+            // Find today's index in the daily data
+            val todayDate = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
+            val todayTempIndex = dailyTemps?.indexOfFirst { it.date == todayDate }?.coerceAtLeast(0) ?: 0
+            val todaySkyconIndex = dailySkycons?.indexOfFirst { it.date == todayDate }?.coerceAtLeast(0) ?: 0
+
             // White color for rain icons
             val whitePrecipColor = android.graphics.Color.WHITE
 
@@ -623,14 +628,14 @@ object WeatherWidgetUpdater {
                         }
 
                         // Get icon (convert skycon to icon name, with white rain)
-                        val daySkycon = dailySkycons?.getOrNull(i)?.value
+                        val daySkycon = dailySkycons?.getOrNull(todaySkyconIndex + i)?.value
                         val dayWeatherInfo = if (daySkycon != null) WeatherUtils.getWeatherInfo(daySkycon) else null
                         val dayIcon = dayWeatherInfo?.icon ?: "overcast"
                         val iconBitmap = renderIcon(context, dayIcon, whitePrecipColor)
 
                         // Get temperature (min/max for the day)
-                        val minTemp = dailyTemps?.getOrNull(i)?.min
-                        val maxTemp = dailyTemps?.getOrNull(i)?.max
+                        val minTemp = dailyTemps?.getOrNull(todayTempIndex + i)?.min
+                        val maxTemp = dailyTemps?.getOrNull(todayTempIndex + i)?.max
                         val tempStr = if (minTemp != null && maxTemp != null) {
                             "${WeatherUtils.formatTemperature(minTemp)} ${WeatherUtils.formatTemperature(maxTemp)}"
                         } else {
