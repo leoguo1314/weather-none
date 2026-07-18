@@ -1,4 +1,4 @@
-package com.skypulse.weather.widget
+﻿package com.skypulse.weather.widget
 
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.toArgb
 import com.skypulse.weather.util.WeatherUtils
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlin.random.Random
 
 object WeatherWidgetUpdater {
 
@@ -473,5 +474,273 @@ object WeatherWidgetUpdater {
         }
         canvas.restore()
     }
+
+    fun updateMediumLoading(context: Context, cityName: String? = null) {
+        try {
+            val manager = AppWidgetManager.getInstance(context)
+            val ids = manager.getAppWidgetIds(ComponentName(context, WeatherWidgetMediumProvider::class.java))
+            if (ids.isEmpty()) {
+                FileLogger.w(TAG, "updateMediumLoading: 无活跃 widget，跳过渲染")
+                return
+            }
+
+            val cityText = shortenLocation(cityName ?: "定位中...")
+            ids.forEach { widgetId ->
+                val views = RemoteViews(context.packageName, R.layout.widget_medium)
+                views.setTextViewText(R.id.widget_city, cityText)
+                views.setTextViewText(R.id.widget_temp, "--")
+
+                // Set placeholder for wind, humidity, AQI, UV
+                views.setTextViewText(R.id.widget_wind, "--")
+                views.setTextViewText(R.id.widget_humidity, "--")
+                views.setTextViewText(R.id.widget_aqi, "--")
+                views.setTextViewText(R.id.widget_uv, "--")
+
+                // Set placeholder for weather
+                views.setTextViewText(R.id.widget_weather_desc, "")
+
+                // Set placeholder for daily forecast items
+                for (i in 1..5) {
+                    val dayNameId = context.resources.getIdentifier("widget_day_name_$i", "id", context.packageName)
+                    val dayTempId = context.resources.getIdentifier("widget_day_temp_$i", "id", context.packageName)
+                    views.setTextViewText(dayNameId, "--")
+                    views.setTextViewText(dayTempId, "--")
+                }
+
+                val (w, h) = getWidgetSizePx(context, widgetId)
+                val sizedBg = buildGradientBitmap(context, null, w, h)
+                views.setImageViewBitmap(R.id.widget_bg, sizedBg)
+                views.setBoolean(R.id.widget_container, "setClipToOutline", true)
+                views.setInt(R.id.widget_container, "setBackgroundResource", R.drawable.widget_rounded_bg)
+
+                val intent = Intent(context, MainActivity::class.java)
+                val pending = PendingIntent.getActivity(
+                    context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+                views.setOnClickPendingIntent(R.id.widget_container, pending)
+                manager.updateAppWidget(widgetId, views)
+            }
+            FileLogger.i(TAG, "updateMediumLoading: 渲染定位占位态完成, widgetCount=${ids.size}")
+        } catch (e: Exception) {
+            FileLogger.e(TAG, "updateMediumLoading: 渲染异常", e)
+        }
+    }
+
+    fun updateMediumAll(context: Context, weather: WeatherResponse?, cityName: String?) {
+        try {
+            val manager = AppWidgetManager.getInstance(context)
+            val ids = manager.getAppWidgetIds(ComponentName(context, WeatherWidgetMediumProvider::class.java))
+            if (ids.isEmpty()) {
+                FileLogger.w(TAG, "updateMediumAll: 无活跃 widget，跳过渲染")
+                return
+            }
+
+            val realtime = weather?.result?.realtime
+            val daily = weather?.result?.daily
+            val skycon = realtime?.skycon
+            val isDay = WeatherUtils.isCurrentlyDay(daily)
+            FileLogger.i(TAG, "updateMediumAll: isDay=$isDay, daily=${daily != null}, astro=${daily?.astro?.size}")
+            val tempText = WeatherUtils.formatTemperature(realtime?.temperature)
+            val cityText = shortenLocation(cityName ?: "--")
+
+            // Get weather info (contains icon name and description)
+            val weatherInfo = WeatherUtils.getWeatherInfo(skycon)
+            val weatherIcon = weatherInfo.icon
+            val weatherDesc = weatherInfo.description
+
+            // Get wind direction and level ("南风 2级" format)
+            val windSpeed = realtime?.wind?.speed
+            val windDirection = realtime?.wind?.direction
+            val windText = getWindDirectionText(windDirection, windSpeed)
+
+            // Get humidity
+            val humidity = realtime?.humidity
+            val humidityText = if (humidity != null) "湿度 ${(humidity * 100).toInt()}%" else "湿度 --"
+
+            // Get AQI
+            val aqi = realtime?.air_quality?.aqi?.chn
+            val aqiText = if (aqi != null) {
+                val aqiDesc = when {
+                    aqi <= 50 -> "优"
+                    aqi <= 100 -> "良"
+                    aqi <= 150 -> "轻度"
+                    aqi <= 200 -> "中度"
+                    aqi <= 300 -> "重度"
+                    else -> "严重"
+                }
+                "空气 $aqiDesc"
+            } else "空气 --"
+
+            // Get UV index
+            val uvIndex = realtime?.life_index?.ultraviolet?.desc
+            val uvText = if (!uvIndex.isNullOrBlank()) "紫外线 $uvIndex" else "紫外线 --"
+
+            // Get daily forecast
+            val dailyTemps = daily?.temperature
+            val dailySkycons = daily?.skycon
+
+            // White color for rain icons
+            val whitePrecipColor = android.graphics.Color.WHITE
+
+            ids.forEach { widgetId ->
+                try {
+                    val views = RemoteViews(context.packageName, R.layout.widget_medium)
+
+                    // Top left: city and temperature
+                    views.setTextViewText(R.id.widget_city, cityText)
+                    views.setTextViewText(R.id.widget_temp, tempText)
+
+                    // Middle: wind, humidity, AQI, UV
+                    views.setTextViewText(R.id.widget_wind, windText)
+                    views.setTextViewText(R.id.widget_humidity, humidityText)
+                    views.setTextViewText(R.id.widget_aqi, aqiText)
+                    views.setTextViewText(R.id.widget_uv, uvText)
+
+                    // Right: weather icon and description (with white rain)
+                    val weatherIconBitmap = renderIcon(context, weatherIcon, whitePrecipColor)
+                    if (weatherIconBitmap != null) {
+                        views.setImageViewBitmap(R.id.widget_weather_icon, weatherIconBitmap)
+                    }
+                    views.setTextViewText(R.id.widget_weather_desc, weatherDesc)
+
+                    // Bottom: 5-day forecast with min/max temperature
+                    val calendar = Calendar.getInstance()
+                    val today = calendar.get(Calendar.DAY_OF_WEEK)
+                    val dayNames = arrayOf("周日", "周一", "周二", "周三", "周四", "周五", "周六")
+
+                    for (i in 0 until minOf(5, dailyTemps?.size ?: 0)) {
+                        val dayIndex = i + 1
+                        val dayNameId = context.resources.getIdentifier("widget_day_name_$dayIndex", "id", context.packageName)
+                        val dayIconId = context.resources.getIdentifier("widget_day_icon_$dayIndex", "id", context.packageName)
+                        val dayTempId = context.resources.getIdentifier("widget_day_temp_$dayIndex", "id", context.packageName)
+
+                        // Get day name
+                        val dayName = if (i == 0) {
+                            "今天"
+                        } else {
+                            val dayOfWeek = (today + i - 1) % 7
+                            dayNames[dayOfWeek]
+                        }
+
+                        // Get icon (convert skycon to icon name, with white rain)
+                        val daySkycon = dailySkycons?.getOrNull(i)?.value
+                        val dayWeatherInfo = if (daySkycon != null) WeatherUtils.getWeatherInfo(daySkycon) else null
+                        val dayIcon = dayWeatherInfo?.icon ?: "overcast"
+                        val iconBitmap = renderIcon(context, dayIcon, whitePrecipColor)
+
+                        // Get temperature (min/max for the day)
+                        val minTemp = dailyTemps?.getOrNull(i)?.min
+                        val maxTemp = dailyTemps?.getOrNull(i)?.max
+                        val tempStr = if (minTemp != null && maxTemp != null) {
+                            "${WeatherUtils.formatTemperature(minTemp)} ${WeatherUtils.formatTemperature(maxTemp)}"
+                        } else {
+                            WeatherUtils.formatTemperature(maxTemp)
+                        }
+
+                        views.setTextViewText(dayNameId, dayName)
+                        if (iconBitmap != null) {
+                            views.setImageViewBitmap(dayIconId, iconBitmap)
+                        }
+                        views.setTextViewText(dayTempId, tempStr)
+                    }
+
+                    val (w, h) = getWidgetSizePx(context, widgetId)
+                    val sizedBg = buildGradientBitmap(context, skycon, w, h, isDay)
+                    views.setImageViewBitmap(R.id.widget_bg, sizedBg)
+                    views.setBoolean(R.id.widget_container, "setClipToOutline", true)
+                    views.setInt(R.id.widget_container, "setBackgroundResource", R.drawable.widget_rounded_bg)
+
+                    val intent = Intent(context, MainActivity::class.java)
+                    val pending = PendingIntent.getActivity(
+                        context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                    )
+                    views.setOnClickPendingIntent(R.id.widget_container, pending)
+                    manager.updateAppWidget(widgetId, views)
+                } catch (_: Exception) {}
+            }
+            FileLogger.i(TAG, "updateMediumAll: 渲染完成, widgetCount=${ids.size}")
+        } catch (e: Exception) {
+            FileLogger.e(TAG, "updateMediumAll: 渲染异常", e)
+        }
+    }
+
+    private fun getWindText(speed: Double?, direction: Double?): String {
+        if (speed == null) return "--"
+        val windLevel = when {
+            speed < 1 -> "0级"
+            speed < 6 -> "1级"
+            speed < 12 -> "2级"
+            speed < 20 -> "3级"
+            speed < 29 -> "4级"
+            speed < 39 -> "5级"
+            speed < 50 -> "6级"
+            speed < 62 -> "7级"
+            speed < 75 -> "8级"
+            speed < 89 -> "9级"
+            speed < 103 -> "10级"
+            speed < 117 -> "11级"
+            else -> "12级"
+        }
+        val dir = when {
+            direction == null -> ""
+            direction < 22.5 || direction >= 337.5 -> "北"
+            direction < 67.5 -> "东北"
+            direction < 112.5 -> "东"
+            direction < 157.5 -> "东南"
+            direction < 202.5 -> "南"
+            direction < 247.5 -> "西南"
+            direction < 292.5 -> "西"
+            else -> "西北"
+        }
+        return "${dir}风$windLevel"
+    }
+
+    private fun getWindDirectionText(direction: Double?, speed: Double?): String {
+        val dir = when {
+            direction == null -> ""
+            direction < 22.5 || direction >= 337.5 -> "北风"
+            direction < 67.5 -> "东北风"
+            direction < 112.5 -> "东风"
+            direction < 157.5 -> "东南风"
+            direction < 202.5 -> "南风"
+            direction < 247.5 -> "西南风"
+            direction < 292.5 -> "西风"
+            else -> "西北风"
+        }
+        val level = if (speed != null) {
+            val l = when {
+                speed < 1 -> "0"
+                speed < 6 -> "1"
+                speed < 12 -> "2"
+                speed < 20 -> "3"
+                speed < 29 -> "4"
+                speed < 39 -> "5"
+                speed < 50 -> "6"
+                speed < 62 -> "7"
+                speed < 75 -> "8"
+                speed < 89 -> "9"
+                speed < 103 -> "10"
+                speed < 117 -> "11"
+                else -> "12"
+            }
+            " ${l}级"
+        } else ""
+        return "$dir$level"
+    }
+
+    private fun getWindDirectionOnly(direction: Double?): String {
+        return when {
+            direction == null -> "--"
+            direction < 22.5 || direction >= 337.5 -> "北风"
+            direction < 67.5 -> "东北风"
+            direction < 112.5 -> "东风"
+            direction < 157.5 -> "东南风"
+            direction < 202.5 -> "南风"
+            direction < 247.5 -> "西南风"
+            direction < 292.5 -> "西风"
+            else -> "西北风"
+        }
+    }
+
 }
 

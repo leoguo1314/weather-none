@@ -10,7 +10,7 @@ import com.skypulse.weather.model.WeatherResponse
 import com.skypulse.weather.util.FileLogger
 import java.util.concurrent.TimeUnit
 
-class WeatherWidgetProvider : AppWidgetProvider() {
+class WeatherWidgetMediumProvider : AppWidgetProvider() {
 
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
@@ -64,15 +64,12 @@ class WeatherWidgetProvider : AppWidgetProvider() {
 
     companion object {
 
+        private const val TAG = "WidgetMediumProvider"
+        private const val WORK_NAME = "weather_widget_medium_periodic"
+        private const val WORK_NAME_ONETIME = "weather_widget_medium_onetime"
+
         /**
-         * 刷新所有 Widget 实例。
-         *
-         * @param context Application Context
-         * @param weather 可选：传入的天气数据（仅用于第一个城市时才使用）
-         * @param cityName 可选：城市名称（仅用于第一个城市时才使用）
-         *
-         * 小组件始终显示第一个城市的天气数据，忽略传入的 weather 和 cityName 参数。
-         * 当 weather 为 null 或不是第一个城市时，从 WeatherFileCache 读取。
+         * 刷新所有中尺寸 Widget 实例。
          */
         fun refresh(
             context: Context,
@@ -82,12 +79,12 @@ class WeatherWidgetProvider : AppWidgetProvider() {
             FileLogger.i(TAG, "refresh: 被调用, 来源weather=${weather != null}, 来源cityName=$cityName")
             try {
                 val manager = AppWidgetManager.getInstance(context)
-                val ids = manager.getAppWidgetIds(ComponentName(context, WeatherWidgetProvider::class.java))
+                val ids = manager.getAppWidgetIds(ComponentName(context, WeatherWidgetMediumProvider::class.java))
                 FileLogger.i(TAG, "refresh: 当前活跃 widgetIds=${ids.toList()}, count=${ids.size}")
                 if (ids.isNotEmpty()) {
                     if (weather != null && cityName != null) {
                         FileLogger.d(TAG, "refresh: 使用传入的天气和城市数据直接更新 Widget")
-                        WeatherWidgetUpdater.updateAll(context, weather, cityName)
+                        WeatherWidgetUpdater.updateMediumAll(context, weather, cityName)
                     } else {
                         FileLogger.d(TAG, "refresh: 启动一次性 Worker 来异步读取并渲染 Widget")
                         enqueueOneTimeWorker(context, trigger = "refresh")
@@ -100,14 +97,10 @@ class WeatherWidgetProvider : AppWidgetProvider() {
             }
         }
 
-        private const val TAG = "WidgetProvider"
-        private const val WORK_NAME = "weather_widget_periodic"
-        private const val WORK_NAME_ONETIME = "weather_widget_onetime"
-
         /** Lightweight periodic refresh for location-aware widgets. */
         fun enqueueWorker(context: Context) {
             FileLogger.i(TAG, "enqueueWorker: 注册 periodic worker, 间隔=${WidgetRefreshPolicy.PERIODIC_REFRESH_MINUTES}分钟")
-            val request = PeriodicWorkRequestBuilder<WeatherWidgetWorker>(
+            val request = PeriodicWorkRequestBuilder<WeatherWidgetMediumWorker>(
                 WidgetRefreshPolicy.PERIODIC_REFRESH_MINUTES,
                 TimeUnit.MINUTES
             )
@@ -126,12 +119,12 @@ class WeatherWidgetProvider : AppWidgetProvider() {
         }
 
         /** 立即触发一次独立刷新 */
-        private fun enqueueOneTimeWorker(context: Context, trigger: String = "onetime") {
+        fun enqueueOneTimeWorker(context: Context, trigger: String = "onetime") {
             FileLogger.i(TAG, "enqueueOneTimeWorker: 入队 onetime worker, trigger=$trigger")
             val inputData = Data.Builder()
                 .putString("trigger", trigger)
                 .build()
-            val request = OneTimeWorkRequestBuilder<WeatherWidgetWorker>()
+            val request = OneTimeWorkRequestBuilder<WeatherWidgetMediumWorker>()
                 .setInputData(inputData)
                 .setConstraints(
                     Constraints.Builder()
