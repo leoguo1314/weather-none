@@ -16,6 +16,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Autorenew
+import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -259,8 +260,15 @@ fun SettingsScreen(
                         locked = !isPremium,
                         onLockedClick = { showMembershipDialog = true }
                     )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Premium benefits section
+                SectionHeader("付费权益")
+                IosCard {
                     if (!isPremium) {
-                        IosDivider()
+                        // 未付费状态：显示锁定项
                         SimpleItem(
                             title = "多城市天气",
                             titleColor = IosTextSecondary,
@@ -315,6 +323,91 @@ fun SettingsScreen(
                                 )
                             },
                             onClick = { showMembershipDialog = true }
+                        )
+                        IosDivider()
+                        SimpleItem(
+                            title = "多功能小组件",
+                            titleColor = IosTextSecondary,
+                            trailing = {
+                                Icon(
+                                    imageVector = Icons.Outlined.Lock,
+                                    contentDescription = "会员功能",
+                                    modifier = Modifier.size(18.dp),
+                                    tint = IosTextSecondary.copy(alpha = 0.5f)
+                                )
+                            },
+                            onClick = { showMembershipDialog = true }
+                        )
+                    } else {
+                        // 已付费状态：显示已解锁项
+                        SimpleItem(
+                            title = "多城市天气",
+                            titleColor = IosTextPrimary,
+                            trailing = {
+                                Icon(
+                                    imageVector = Icons.Outlined.Check,
+                                    contentDescription = "已解锁",
+                                    modifier = Modifier.size(18.dp),
+                                    tint = IosAccentGreen
+                                )
+                            },
+                            onClick = { }
+                        )
+                        IosDivider()
+                        SimpleItem(
+                            title = "街道/小区级定位",
+                            titleColor = IosTextPrimary,
+                            trailing = {
+                                Icon(
+                                    imageVector = Icons.Outlined.Check,
+                                    contentDescription = "已解锁",
+                                    modifier = Modifier.size(18.dp),
+                                    tint = IosAccentGreen
+                                )
+                            },
+                            onClick = { }
+                        )
+                        IosDivider()
+                        SimpleItem(
+                            title = "15日预报",
+                            titleColor = IosTextPrimary,
+                            trailing = {
+                                Icon(
+                                    imageVector = Icons.Outlined.Check,
+                                    contentDescription = "已解锁",
+                                    modifier = Modifier.size(18.dp),
+                                    tint = IosAccentGreen
+                                )
+                            },
+                            onClick = { }
+                        )
+                        IosDivider()
+                        SimpleItem(
+                            title = "AI天气校准",
+                            titleColor = IosTextPrimary,
+                            trailing = {
+                                Icon(
+                                    imageVector = Icons.Outlined.Check,
+                                    contentDescription = "已解锁",
+                                    modifier = Modifier.size(18.dp),
+                                    tint = IosAccentGreen
+                                )
+                            },
+                            onClick = { }
+                        )
+                        IosDivider()
+                        SimpleItem(
+                            title = "多功能小组件",
+                            titleColor = IosTextPrimary,
+                            trailing = {
+                                Icon(
+                                    imageVector = Icons.Outlined.Check,
+                                    contentDescription = "已解锁",
+                                    modifier = Modifier.size(18.dp),
+                                    tint = IosAccentGreen
+                                )
+                            },
+                            onClick = { }
                         )
                     }
                 }

@@ -181,6 +181,7 @@ val IosTextPrimary = Color(0xFF1C1C1E)
 val IosTextSecondary = Color(0xFF8E8E93)
 val IosBackArrow = Color(0xFF333333)
 val IosAccentBlue = Color(0xFF007AFF)
+val IosAccentGreen = Color(0xFF34C759)
 val IosSwitchOff = Color(0xFFE5E5EA)
 val IosToggleTrackOn = Color(0xFF007AFF)
 
