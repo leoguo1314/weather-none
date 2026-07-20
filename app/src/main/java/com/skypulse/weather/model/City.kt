@@ -8,5 +8,6 @@ data class City(
     val name: String,
     val longitude: Double,
     val latitude: Double,
-    val isCurrentLocation: Boolean = false
+    val isCurrentLocation: Boolean = false,
+    val isBookmarked: Boolean = false
 )

@@ -393,31 +393,15 @@ class WeatherViewModel @Inject constructor(
     // ============ City Management ============
 
     /**
-     * 判断当前定位城市是否已被收藏（多城市列表中是否存在坐标接近的非定位城市）。
-     * 使用坐标容差约 0.0002 度（约 20 米），避免浮点精度问题。
+     * 判断当前定位城市是否已被收藏（是否存在 isBookmarked=true 的城市）。
      */
     val isCurrentLocationBookmarked: Boolean
-        get() {
-            val cities = _savedCities.value
-            val currentLoc = cities.firstOrNull { it.isCurrentLocation } ?: return false
-            return cities.any {
-                !it.isCurrentLocation &&
-                    kotlin.math.abs(it.latitude - currentLoc.latitude) < 0.0002 &&
-                    kotlin.math.abs(it.longitude - currentLoc.longitude) < 0.0002
-            }
-        }
+        get() = _savedCities.value.any { it.isBookmarked }
 
     /**
-     * 判断指定城市是否为"收藏克隆城市"（坐标接近当前定位城市，但不是定位城市本身）。
-     * 用于区分收藏克隆城市和手动搜索添加的城市。
+     * 判断指定城市是否为收藏克隆城市。
      */
-    fun isBookmarkedCity(city: City): Boolean {
-        if (city.isCurrentLocation) return false
-        val cities = _savedCities.value
-        val currentLoc = cities.firstOrNull { it.isCurrentLocation } ?: return false
-        return kotlin.math.abs(city.latitude - currentLoc.latitude) < 0.0002 &&
-            kotlin.math.abs(city.longitude - currentLoc.longitude) < 0.0002
-    }
+    fun isBookmarkedCity(city: City): Boolean = city.isBookmarked
 
     /**
      * 收藏当前定位城市：使用缓存的精确地址名称和坐标添加到多城市列表。
@@ -430,12 +414,12 @@ class WeatherViewModel @Inject constructor(
         val name = cachedLoc?.name ?: currentLoc.name.takeIf { it != "当前定位" } ?: "收藏位置"
         val lon = cachedLoc?.longitude ?: currentLoc.longitude
         val lat = cachedLoc?.latitude ?: currentLoc.latitude
-        addCity(name, lon, lat)
+        addCity(name, lon, lat, isBookmarked = true)
     }
 
-    fun addCity(name: String, longitude: Double, latitude: Double) {
+    fun addCity(name: String, longitude: Double, latitude: Double, isBookmarked: Boolean = false) {
         viewModelScope.launch {
-            val (city, updatedCities) = manageCityUseCase.addCity(name, longitude, latitude)
+            val (city, updatedCities) = manageCityUseCase.addCity(name, longitude, latitude, isBookmarked)
             _savedCities.value = updatedCities
             loadWeatherForCity(city)
             if (selectedCityId.value == null) {
@@ -656,7 +640,21 @@ class WeatherViewModel @Inject constructor(
             val startMs = android.os.SystemClock.elapsedRealtime()
             val selectedBefore = selectedCityId.value
             refreshLog("on_resume_start: selectedBefore=$selectedBefore")
-            val cities = manageCityUseCase.getCities()
+            var cities = manageCityUseCase.getCities()
+            // 无论选中哪个城市，都用 GPS 缓存更新定位城市的名称和坐标
+            val cachedLoc = locationManager.getCachedLocation()
+            if (cachedLoc != null) {
+                val currentIdx = cities.indexOfFirst { it.isCurrentLocation }
+                if (currentIdx >= 0) {
+                    val current = cities[currentIdx]
+                    if (current.name != cachedLoc.name || current.longitude != cachedLoc.longitude || current.latitude != cachedLoc.latitude) {
+                        cities = cities.toMutableList().apply {
+                            this[currentIdx] = current.copy(name = cachedLoc.name, longitude = cachedLoc.longitude, latitude = cachedLoc.latitude)
+                        }
+                        manageCityUseCase.saveCities(cities)
+                    }
+                }
+            }
             _savedCities.value = cities
             if (selectedBefore == null) {
                 val defaultCity = CitySelectionPolicy.defaultCity(cities)

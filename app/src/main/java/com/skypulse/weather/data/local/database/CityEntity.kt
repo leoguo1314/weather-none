@@ -10,5 +10,6 @@ data class CityEntity(
     val longitude: Double,
     val latitude: Double,
     val isCurrentLocation: Boolean = false,
-    val sortOrder: Int = 0
+    val sortOrder: Int = 0,
+    val isBookmarked: Boolean = false
 )

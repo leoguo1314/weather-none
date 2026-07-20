@@ -78,7 +78,8 @@ class CityRepository @Inject constructor(
         name = name,
         longitude = longitude,
         latitude = latitude,
-        isCurrentLocation = isCurrentLocation
+        isCurrentLocation = isCurrentLocation,
+        isBookmarked = isBookmarked
     )
 
     private fun City.toEntity(sortOrder: Int): CityEntity = CityEntity(
@@ -87,7 +88,8 @@ class CityRepository @Inject constructor(
         longitude = longitude,
         latitude = latitude,
         isCurrentLocation = isCurrentLocation,
-        sortOrder = sortOrder
+        sortOrder = sortOrder,
+        isBookmarked = isBookmarked
     )
 
     private fun parseCityJson(json: String): List<City> {

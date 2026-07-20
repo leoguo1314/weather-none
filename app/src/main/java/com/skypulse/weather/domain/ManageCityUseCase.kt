@@ -26,13 +26,14 @@ class ManageCityUseCase @Inject constructor(
         return cityRepository.observeCities()
     }
 
-    suspend fun addCity(name: String, longitude: Double, latitude: Double): Pair<City, List<City>> {
+    suspend fun addCity(name: String, longitude: Double, latitude: Double, isBookmarked: Boolean = false): Pair<City, List<City>> {
         val city = City(
             id = java.util.UUID.randomUUID().toString(),
             name = name,
             longitude = longitude,
             latitude = latitude,
-            isCurrentLocation = false
+            isCurrentLocation = false,
+            isBookmarked = isBookmarked
         )
         cityRepository.addCity(city)
         val updatedCities = cityRepository.getCities()

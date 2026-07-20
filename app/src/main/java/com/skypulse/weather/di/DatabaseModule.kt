@@ -24,7 +24,7 @@ object DatabaseModule {
             AppDatabase::class.java,
             "skypulse_weather.db"
         )
-        .addMigrations(AppDatabase.MIGRATION_1_2)
+        .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3)
         .enableMultiInstanceInvalidation()
         .build()
 
