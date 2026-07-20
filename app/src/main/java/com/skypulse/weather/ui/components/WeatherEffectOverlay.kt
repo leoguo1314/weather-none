@@ -103,7 +103,7 @@ private fun SunnyDayEffect(modifier: Modifier) {
         // 1. 光线射线效果（从上方射入）
         lightRays.forEach { ray ->
             val pulse = sin(animationTime * ray.pulseSpeed + ray.pulseOffset)
-            val currentAlpha = ray.alpha * (0.5f + 0.5f * pulse)
+            val currentAlpha = (ray.alpha * (0.5f + 0.5f * pulse)).coerceIn(0f, 1f)
 
             // 射线起点（屏幕上方）
             val startX = ray.x + animationTime * ray.speedX * 10
@@ -134,7 +134,7 @@ private fun SunnyDayEffect(modifier: Modifier) {
         // 2. 阳光光晕效果
         sunBeams.forEach { beam ->
             val pulse = sin(animationTime * beam.pulseSpeed + beam.pulseOffset)
-            val currentAlpha = beam.alpha * (0.6f + 0.4f * pulse)
+            val currentAlpha = (beam.alpha * (0.6f + 0.4f * pulse)).coerceIn(0f, 1f)
             val currentSize = beam.size * (0.95f + 0.05f * pulse)
 
             // 缓慢移动
@@ -190,7 +190,7 @@ private fun SunnyDayEffect(modifier: Modifier) {
         // 3. 微小光点飘浮
         floatingMotes.forEach { mote ->
             val pulse = sin(animationTime * mote.pulseSpeed + mote.pulseOffset)
-            val currentAlpha = mote.alpha * (0.4f + 0.6f * pulse)
+            val currentAlpha = (mote.alpha * (0.4f + 0.6f * pulse)).coerceIn(0f, 1f)
             val currentSize = mote.size * (0.8f + 0.2f * pulse)
 
             // 随机漂浮轨迹
@@ -247,7 +247,7 @@ private fun PartlyCloudyDayEffect(modifier: Modifier) {
         // 光线射线（较少）
         lightRays.take(4).forEach { ray ->
             val pulse = sin(animationTime * ray.pulseSpeed + ray.pulseOffset)
-            val currentAlpha = ray.alpha * 0.6f * (0.5f + 0.5f * pulse)
+            val currentAlpha = (ray.alpha * 0.6f * (0.5f + 0.5f * pulse)).coerceIn(0f, 1f)
 
             val startX = ray.x + animationTime * ray.speedX * 10
             val startY = -50f
@@ -276,7 +276,7 @@ private fun PartlyCloudyDayEffect(modifier: Modifier) {
         // 阳光光晕（较少）
         sunBeams.take(6).forEach { beam ->
             val pulse = sin(animationTime * beam.pulseSpeed + beam.pulseOffset)
-            val currentAlpha = beam.alpha * 0.6f * (0.6f + 0.4f * pulse)
+            val currentAlpha = (beam.alpha * 0.6f * (0.6f + 0.4f * pulse)).coerceIn(0f, 1f)
             val currentSize = beam.size * (0.95f + 0.05f * pulse)
 
             val x = (beam.x + animationTime * beam.speedX * 15) % (size.width + beam.size * 2) - beam.size
@@ -329,7 +329,7 @@ private fun ClearNightEffect(modifier: Modifier) {
         stars.forEach { star ->
             // 闪烁效果
             val twinkle = sin(animationTime * star.twinkleSpeed + star.twinkleOffset)
-            val currentAlpha = star.maxAlpha * (0.5f + 0.5f * twinkle)
+            val currentAlpha = (star.maxAlpha * (0.5f + 0.5f * twinkle)).coerceIn(0f, 1f)
 
             // 光晕
             drawCircle(
