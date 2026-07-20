@@ -15,6 +15,7 @@ fun WeatherBackground(
     skycon: String?,
     daily: DailyForecast? = null,
     modifier: Modifier = Modifier,
+    showParticles: Boolean = true,
     content: @Composable BoxScope.() -> Unit
 ) {
     val isDay = WeatherUtils.isCurrentlyDay(daily)
@@ -31,6 +32,14 @@ fun WeatherBackground(
                 )
             )
     ) {
+        // 粒子效果叠加层（不影响内容展示）
+        if (showParticles) {
+            WeatherEffectOverlay(
+                skycon = skycon,
+                isDay = isDay,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
         content()
     }
 }
