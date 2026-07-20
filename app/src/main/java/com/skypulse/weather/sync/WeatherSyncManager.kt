@@ -148,8 +148,8 @@ class WeatherSyncManager @Inject constructor(
             Log.i(TAG, "refreshWeather: 网络请求完成, success=${result.isSuccess}")
             result.fold(
                 onSuccess = { rawResponse ->
-                    // 当前定位城市：校准彩云的"阴天"和"多云"偏差
-                    val response = if (cityId == CURRENT_LOCATION_ID) {
+                    // 校准彩云的"阴天"和"多云"偏差（定位城市 + 收藏克隆城市）
+                    val response = if (shouldCalibrate(cityId, longitude, latitude)) {
                         calibrateSkyconIfNeeded(rawResponse, longitude, latitude)
                     } else {
                         rawResponse
@@ -475,6 +475,20 @@ class WeatherSyncManager @Inject constructor(
     }
 
 
+
+    /**
+     * 判断是否需要校准：定位城市或收藏克隆城市（坐标接近定位城市的非定位城市）。
+     */
+    private suspend fun shouldCalibrate(
+        cityId: String,
+        longitude: Double,
+        latitude: Double
+    ): Boolean {
+        if (cityId == CURRENT_LOCATION_ID) return true
+        val currentLoc = cityRepository.getCities().firstOrNull { it.isCurrentLocation } ?: return false
+        return kotlin.math.abs(longitude - currentLoc.longitude) < 0.0002 &&
+            kotlin.math.abs(latitude - currentLoc.latitude) < 0.0002
+    }
 
     /**
      * 校准彩云天气的"阴天"和"多云"偏差。
