@@ -14,8 +14,10 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import kotlinx.coroutines.isActive
 import kotlin.math.PI
+import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
 
@@ -79,11 +81,13 @@ fun WeatherEffectOverlay(
 }
 
 /**
- * 晴天效果 - 阳光光束
+ * 晴天效果 - 阳光光束 + 光线射线 + 微小光点
  */
 @Composable
 private fun SunnyDayEffect(modifier: Modifier) {
     val sunBeams = remember { generateSunBeams() }
+    val lightRays = remember { generateLightRays() }
+    val floatingMotes = remember { generateFloatingMotes() }
 
     // 粒子位置动画
     var animationTime by remember { mutableStateOf(0f) }
@@ -96,7 +100,38 @@ private fun SunnyDayEffect(modifier: Modifier) {
     }
 
     Canvas(modifier = modifier.fillMaxSize()) {
-        // 阳光光束效果
+        // 1. 光线射线效果（从上方射入）
+        lightRays.forEach { ray ->
+            val pulse = sin(animationTime * ray.pulseSpeed + ray.pulseOffset)
+            val currentAlpha = ray.alpha * (0.5f + 0.5f * pulse)
+
+            // 射线起点（屏幕上方）
+            val startX = ray.x + animationTime * ray.speedX * 10
+            val startY = -50f
+            // 射线终点
+            val endX = startX + ray.angleX * ray.length
+            val endY = startY + ray.length
+
+            drawLine(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = 0f),
+                        ray.color.copy(alpha = currentAlpha * 0.3f),
+                        ray.color.copy(alpha = currentAlpha),
+                        ray.color.copy(alpha = currentAlpha * 0.3f),
+                        Color.White.copy(alpha = 0f)
+                    ),
+                    startY = startY,
+                    endY = endY
+                ),
+                start = Offset(startX, startY),
+                end = Offset(endX, endY),
+                strokeWidth = ray.width,
+                cap = StrokeCap.Round
+            )
+        }
+
+        // 2. 阳光光晕效果
         sunBeams.forEach { beam ->
             val pulse = sin(animationTime * beam.pulseSpeed + beam.pulseOffset)
             val currentAlpha = beam.alpha * (0.6f + 0.4f * pulse)
@@ -106,7 +141,6 @@ private fun SunnyDayEffect(modifier: Modifier) {
             val x = (beam.x + animationTime * beam.speedX * 15) % (size.width + beam.size * 2) - beam.size
             val y = beam.y + sin(animationTime * 0.3f + beam.pulseOffset) * 15f
 
-            // 多层光晕营造阳光感
             // 外层大光晕
             drawCircle(
                 brush = Brush.radialGradient(
@@ -152,6 +186,41 @@ private fun SunnyDayEffect(modifier: Modifier) {
                 center = Offset(x, y)
             )
         }
+
+        // 3. 微小光点飘浮
+        floatingMotes.forEach { mote ->
+            val pulse = sin(animationTime * mote.pulseSpeed + mote.pulseOffset)
+            val currentAlpha = mote.alpha * (0.4f + 0.6f * pulse)
+            val currentSize = mote.size * (0.8f + 0.2f * pulse)
+
+            // 随机漂浮轨迹
+            val x = (mote.x + animationTime * mote.speedX * 8 + sin(animationTime * 0.7f + mote.pulseOffset) * 20f) %
+                    (size.width + mote.size * 2) - mote.size
+            val y = (mote.y + animationTime * mote.speedY * 5 + cos(animationTime * 0.5f + mote.pulseOffset) * 15f) %
+                    (size.height + mote.size * 2) - mote.size
+
+            // 光点光晕
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = currentAlpha),
+                        mote.color.copy(alpha = currentAlpha * 0.6f),
+                        mote.color.copy(alpha = 0f)
+                    ),
+                    center = Offset(x, y),
+                    radius = currentSize * 2f
+                ),
+                radius = currentSize * 2f,
+                center = Offset(x, y)
+            )
+
+            // 光点核心
+            drawCircle(
+                color = Color.White.copy(alpha = currentAlpha * 0.9f),
+                radius = currentSize * 0.3f,
+                center = Offset(x, y)
+            )
+        }
     }
 }
 
@@ -161,7 +230,9 @@ private fun SunnyDayEffect(modifier: Modifier) {
 @Composable
 private fun PartlyCloudyDayEffect(modifier: Modifier) {
     val sunBeams = remember { generateSunBeams() }
-    val clouds = remember { generateClouds() }
+    val lightRays = remember { generateLightRays() }
+    val cloudsMid = remember { generateCloudsMid() }
+    val cloudsNear = remember { generateCloudsNear() }
 
     var animationTime by remember { mutableStateOf(0f) }
     LaunchedEffect(Unit) {
@@ -173,10 +244,39 @@ private fun PartlyCloudyDayEffect(modifier: Modifier) {
     }
 
     Canvas(modifier = modifier.fillMaxSize()) {
-        // 阳光光束（较少）
+        // 光线射线（较少）
+        lightRays.take(4).forEach { ray ->
+            val pulse = sin(animationTime * ray.pulseSpeed + ray.pulseOffset)
+            val currentAlpha = ray.alpha * 0.6f * (0.5f + 0.5f * pulse)
+
+            val startX = ray.x + animationTime * ray.speedX * 10
+            val startY = -50f
+            val endX = startX + ray.angleX * ray.length
+            val endY = startY + ray.length
+
+            drawLine(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = 0f),
+                        ray.color.copy(alpha = currentAlpha * 0.2f),
+                        ray.color.copy(alpha = currentAlpha),
+                        ray.color.copy(alpha = currentAlpha * 0.2f),
+                        Color.White.copy(alpha = 0f)
+                    ),
+                    startY = startY,
+                    endY = endY
+                ),
+                start = Offset(startX, startY),
+                end = Offset(endX, endY),
+                strokeWidth = ray.width * 0.8f,
+                cap = StrokeCap.Round
+            )
+        }
+
+        // 阳光光晕（较少）
         sunBeams.take(6).forEach { beam ->
             val pulse = sin(animationTime * beam.pulseSpeed + beam.pulseOffset)
-            val currentAlpha = beam.alpha * 0.7f * (0.6f + 0.4f * pulse)
+            val currentAlpha = beam.alpha * 0.6f * (0.6f + 0.4f * pulse)
             val currentSize = beam.size * (0.95f + 0.05f * pulse)
 
             val x = (beam.x + animationTime * beam.speedX * 15) % (size.width + beam.size * 2) - beam.size
@@ -185,8 +285,8 @@ private fun PartlyCloudyDayEffect(modifier: Modifier) {
             drawCircle(
                 brush = Brush.radialGradient(
                     colors = listOf(
-                        beam.color.copy(alpha = currentAlpha * 0.4f),
-                        beam.color.copy(alpha = currentAlpha * 0.2f),
+                        beam.color.copy(alpha = currentAlpha * 0.35f),
+                        beam.color.copy(alpha = currentAlpha * 0.18f),
                         beam.color.copy(alpha = 0f)
                     ),
                     center = Offset(x, y),
@@ -197,60 +297,14 @@ private fun PartlyCloudyDayEffect(modifier: Modifier) {
             )
         }
 
-        // 云朵
-        clouds.forEach { cloud ->
-            val x = ((cloud.x + animationTime * cloud.speedX * 12) % (size.width + cloud.width * 2)) - cloud.width
-            val y = cloud.y + sin(animationTime * 0.15f + cloud.y * 0.005f) * 8f
+        // 中景云层
+        cloudsMid.forEach { cloud ->
+            drawCloud(cloud, animationTime, speedFactor = 10f, alphaFactor = 0.8f)
+        }
 
-            val centerX = x + cloud.width / 2
-            val centerY = y + cloud.height / 2
-
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = cloud.alpha * 0.8f),
-                        Color.White.copy(alpha = cloud.alpha * 0.5f),
-                        Color.White.copy(alpha = cloud.alpha * 0.2f),
-                        Color.White.copy(alpha = 0f)
-                    ),
-                    center = Offset(centerX, centerY),
-                    radius = cloud.width * 0.6f
-                ),
-                radius = cloud.width * 0.6f,
-                center = Offset(centerX, centerY)
-            )
-
-            val leftX = x + cloud.width * 0.25f
-            val leftY = centerY - cloud.height * 0.15f
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = cloud.alpha * 0.7f),
-                        Color.White.copy(alpha = cloud.alpha * 0.4f),
-                        Color.White.copy(alpha = 0f)
-                    ),
-                    center = Offset(leftX, leftY),
-                    radius = cloud.width * 0.4f
-                ),
-                radius = cloud.width * 0.4f,
-                center = Offset(leftX, leftY)
-            )
-
-            val rightX = x + cloud.width * 0.75f
-            val rightY = centerY - cloud.height * 0.1f
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = cloud.alpha * 0.7f),
-                        Color.White.copy(alpha = cloud.alpha * 0.4f),
-                        Color.White.copy(alpha = 0f)
-                    ),
-                    center = Offset(rightX, rightY),
-                    radius = cloud.width * 0.35f
-                ),
-                radius = cloud.width * 0.35f,
-                center = Offset(rightX, rightY)
-            )
+        // 近景云层
+        cloudsNear.forEach { cloud ->
+            drawCloud(cloud, animationTime, speedFactor = 16f, alphaFactor = 1f)
         }
     }
 }
@@ -321,11 +375,13 @@ private fun ClearNightEffect(modifier: Modifier) {
 }
 
 /**
- * 雨天效果 - 雨滴下落（增强可见度）
+ * 雨天效果 - 前景/背景雨层 + 底部水雾
  */
 @Composable
 private fun RainEffect(modifier: Modifier) {
-    val raindrops = remember { generateRaindrops() }
+    val raindropsBg = remember { generateRaindropsBg() }
+    val raindropsFg = remember { generateRaindropsFg() }
+    val rainMist = remember { generateRainMist() }
     var animationTime by remember { mutableStateOf(0f) }
     var lastFrameTime by remember { mutableStateOf(0L) }
 
@@ -342,22 +398,47 @@ private fun RainEffect(modifier: Modifier) {
     }
 
     Canvas(modifier = modifier.fillMaxSize()) {
-        raindrops.forEach { drop ->
-            // 更新位置
-            val speedFactor = 180f
-            val x = ((drop.x + animationTime * drop.speedX * 35) % (size.width + 100f)) - 50f
+        // 1. 背景雨层（小、淡、慢）
+        raindropsBg.forEach { drop ->
+            val speedFactor = 120f
+            val x = ((drop.x + animationTime * drop.speedX * 25) % (size.width + 80f)) - 40f
             val y = ((drop.y + animationTime * drop.speedY * speedFactor) % (size.height + drop.length)) - drop.length
 
-            // 雨滴拖尾
-            val endX = x + drop.speedX * drop.length * 0.15f
+            val endX = x + drop.speedX * drop.length * 0.12f
             val endY = y + drop.length
 
-            // 主雨滴 - 更明显的渐变
             drawLine(
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        Color.White.copy(alpha = drop.alpha * 0.1f),
-                        Color.White.copy(alpha = drop.alpha * 0.6f),
+                        Color.White.copy(alpha = drop.alpha * 0.05f),
+                        Color.White.copy(alpha = drop.alpha * 0.3f),
+                        Color.White.copy(alpha = drop.alpha * 0.6f)
+                    ),
+                    startY = y,
+                    endY = endY
+                ),
+                start = Offset(x, y),
+                end = Offset(endX, endY),
+                strokeWidth = drop.thickness * 0.6f,
+                cap = StrokeCap.Round
+            )
+        }
+
+        // 2. 前景雨层（大、明显、快）
+        raindropsFg.forEach { drop ->
+            val speedFactor = 200f
+            val x = ((drop.x + animationTime * drop.speedX * 40) % (size.width + 120f)) - 60f
+            val y = ((drop.y + animationTime * drop.speedY * speedFactor) % (size.height + drop.length)) - drop.length
+
+            val endX = x + drop.speedX * drop.length * 0.18f
+            val endY = y + drop.length
+
+            // 雨滴主体
+            drawLine(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = drop.alpha * 0.08f),
+                        Color.White.copy(alpha = drop.alpha * 0.5f),
                         Color.White.copy(alpha = drop.alpha)
                     ),
                     startY = y,
@@ -369,11 +450,32 @@ private fun RainEffect(modifier: Modifier) {
                 cap = StrokeCap.Round
             )
 
-            // 雨滴头部高光 - 更明显
+            // 雨滴头部高光
             drawCircle(
-                color = Color.White.copy(alpha = drop.alpha * 0.8f),
-                radius = drop.thickness * 0.8f,
+                color = Color.White.copy(alpha = drop.alpha * 0.7f),
+                radius = drop.thickness * 0.7f,
                 center = Offset(endX, endY)
+            )
+        }
+
+        // 3. 底部水雾效果
+        rainMist.forEach { mist ->
+            val x = ((mist.x + animationTime * mist.speedX * 15) % (size.width + mist.size * 2)) - mist.size
+            val y = size.height - mist.y - mist.size * 0.3f
+
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = mist.alpha * 0.6f),
+                        Color.White.copy(alpha = mist.alpha * 0.3f),
+                        Color.White.copy(alpha = mist.alpha * 0.1f),
+                        Color.White.copy(alpha = 0f)
+                    ),
+                    center = Offset(x, y),
+                    radius = mist.size
+                ),
+                radius = mist.size,
+                center = Offset(x, y)
             )
         }
     }
@@ -433,11 +535,13 @@ private fun SnowEffect(modifier: Modifier) {
 }
 
 /**
- * 多云效果 - 云朵漂浮
+ * 多云效果 - 远近云层视差漂浮
  */
 @Composable
 private fun CloudyEffect(modifier: Modifier) {
-    val clouds = remember { generateClouds() }
+    val cloudsFar = remember { generateCloudsFar() }
+    val cloudsMid = remember { generateCloudsMid() }
+    val cloudsNear = remember { generateCloudsNear() }
     var animationTime by remember { mutableStateOf(0f) }
     var lastFrameTime by remember { mutableStateOf(0L) }
 
@@ -454,83 +558,117 @@ private fun CloudyEffect(modifier: Modifier) {
     }
 
     Canvas(modifier = modifier.fillMaxSize()) {
-        clouds.forEach { cloud ->
-            // 缓慢移动，模拟云朵飘动
-            val x = ((cloud.x + animationTime * cloud.speedX * 12) % (size.width + cloud.width * 2)) - cloud.width
-            val y = cloud.y + sin(animationTime * 0.15f + cloud.y * 0.005f) * 8f
+        // 远景云层（更小、更淡、更慢）
+        cloudsFar.forEach { cloud ->
+            drawCloud(cloud, animationTime, speedFactor = 5f, alphaFactor = 0.4f)
+        }
 
-            // 云朵由多个重叠的椭圆组成，营造蓬松感
-            val centerX = x + cloud.width / 2
-            val centerY = y + cloud.height / 2
+        // 中景云层
+        cloudsMid.forEach { cloud ->
+            drawCloud(cloud, animationTime, speedFactor = 10f, alphaFactor = 0.7f)
+        }
 
-            // 主体椭圆
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = cloud.alpha * 0.8f),
-                        Color.White.copy(alpha = cloud.alpha * 0.5f),
-                        Color.White.copy(alpha = cloud.alpha * 0.2f),
-                        Color.White.copy(alpha = 0f)
-                    ),
-                    center = Offset(centerX, centerY),
-                    radius = cloud.width * 0.6f
-                ),
-                radius = cloud.width * 0.6f,
-                center = Offset(centerX, centerY)
-            )
-
-            // 左侧凸起
-            val leftX = x + cloud.width * 0.25f
-            val leftY = centerY - cloud.height * 0.15f
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = cloud.alpha * 0.7f),
-                        Color.White.copy(alpha = cloud.alpha * 0.4f),
-                        Color.White.copy(alpha = 0f)
-                    ),
-                    center = Offset(leftX, leftY),
-                    radius = cloud.width * 0.4f
-                ),
-                radius = cloud.width * 0.4f,
-                center = Offset(leftX, leftY)
-            )
-
-            // 右侧凸起
-            val rightX = x + cloud.width * 0.75f
-            val rightY = centerY - cloud.height * 0.1f
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = cloud.alpha * 0.7f),
-                        Color.White.copy(alpha = cloud.alpha * 0.4f),
-                        Color.White.copy(alpha = 0f)
-                    ),
-                    center = Offset(rightX, rightY),
-                    radius = cloud.width * 0.35f
-                ),
-                radius = cloud.width * 0.35f,
-                center = Offset(rightX, rightY)
-            )
-
-            // 顶部小凸起
-            val topX = centerX + cloud.width * 0.1f
-            val topY = centerY - cloud.height * 0.3f
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = cloud.alpha * 0.6f),
-                        Color.White.copy(alpha = cloud.alpha * 0.3f),
-                        Color.White.copy(alpha = 0f)
-                    ),
-                    center = Offset(topX, topY),
-                    radius = cloud.width * 0.25f
-                ),
-                radius = cloud.width * 0.25f,
-                center = Offset(topX, topY)
-            )
+        // 近景云层（更大、更明显、更快）
+        cloudsNear.forEach { cloud ->
+            drawCloud(cloud, animationTime, speedFactor = 18f, alphaFactor = 1f)
         }
     }
+}
+
+/**
+ * 绘制单朵云（由多个柔和圆形组成）
+ */
+private fun DrawScope.drawCloud(cloud: Cloud, animationTime: Float, speedFactor: Float, alphaFactor: Float) {
+    val x = ((cloud.x + animationTime * cloud.speedX * speedFactor) % (size.width + cloud.width * 2)) - cloud.width
+    val y = cloud.y + sin(animationTime * 0.12f + cloud.y * 0.003f) * 6f
+
+    val centerX = x + cloud.width / 2
+    val centerY = y + cloud.height / 2
+    val alpha = cloud.alpha * alphaFactor
+
+    // 云朵主体（大椭圆）
+    drawCircle(
+        brush = Brush.radialGradient(
+            colors = listOf(
+                Color.White.copy(alpha = alpha * 0.7f),
+                Color.White.copy(alpha = alpha * 0.4f),
+                Color.White.copy(alpha = alpha * 0.15f),
+                Color.White.copy(alpha = 0f)
+            ),
+            center = Offset(centerX, centerY),
+            radius = cloud.width * 0.55f
+        ),
+        radius = cloud.width * 0.55f,
+        center = Offset(centerX, centerY)
+    )
+
+    // 左侧凸起
+    val leftX = x + cloud.width * 0.2f
+    val leftY = centerY - cloud.height * 0.1f
+    drawCircle(
+        brush = Brush.radialGradient(
+            colors = listOf(
+                Color.White.copy(alpha = alpha * 0.65f),
+                Color.White.copy(alpha = alpha * 0.35f),
+                Color.White.copy(alpha = 0f)
+            ),
+            center = Offset(leftX, leftY),
+            radius = cloud.width * 0.38f
+        ),
+        radius = cloud.width * 0.38f,
+        center = Offset(leftX, leftY)
+    )
+
+    // 右侧凸起
+    val rightX = x + cloud.width * 0.8f
+    val rightY = centerY + cloud.height * 0.05f
+    drawCircle(
+        brush = Brush.radialGradient(
+            colors = listOf(
+                Color.White.copy(alpha = alpha * 0.6f),
+                Color.White.copy(alpha = alpha * 0.3f),
+                Color.White.copy(alpha = 0f)
+            ),
+            center = Offset(rightX, rightY),
+            radius = cloud.width * 0.32f
+        ),
+        radius = cloud.width * 0.32f,
+        center = Offset(rightX, rightY)
+    )
+
+    // 顶部凸起
+    val topX = centerX + cloud.width * 0.15f
+    val topY = centerY - cloud.height * 0.35f
+    drawCircle(
+        brush = Brush.radialGradient(
+            colors = listOf(
+                Color.White.copy(alpha = alpha * 0.55f),
+                Color.White.copy(alpha = alpha * 0.25f),
+                Color.White.copy(alpha = 0f)
+            ),
+            center = Offset(topX, topY),
+            radius = cloud.width * 0.28f
+        ),
+        radius = cloud.width * 0.28f,
+        center = Offset(topX, topY)
+    )
+
+    // 底部阴影
+    val bottomX = centerX
+    val bottomY = centerY + cloud.height * 0.25f
+    drawCircle(
+        brush = Brush.radialGradient(
+            colors = listOf(
+                Color.White.copy(alpha = alpha * 0.3f),
+                Color.White.copy(alpha = alpha * 0.15f),
+                Color.White.copy(alpha = 0f)
+            ),
+            center = Offset(bottomX, bottomY),
+            radius = cloud.width * 0.45f
+        ),
+        radius = cloud.width * 0.45f,
+        center = Offset(bottomX, bottomY)
+    )
 }
 
 /**
@@ -796,6 +934,30 @@ private data class SunBeam(
     val color: Color
 )
 
+private data class LightRay(
+    val x: Float,
+    val alpha: Float,
+    val length: Float,
+    val width: Float,
+    val angleX: Float,
+    val speedX: Float,
+    val pulseSpeed: Float,
+    val pulseOffset: Float,
+    val color: Color
+)
+
+private data class FloatingMote(
+    val x: Float,
+    val y: Float,
+    val alpha: Float,
+    val size: Float,
+    val speedX: Float,
+    val speedY: Float,
+    val pulseSpeed: Float,
+    val pulseOffset: Float,
+    val color: Color
+)
+
 private data class Cloud(
     val x: Float,
     val y: Float,
@@ -835,6 +997,14 @@ private data class Raindrop(
     val speedY: Float,
     val length: Float,
     val thickness: Float
+)
+
+private data class RainMist(
+    val x: Float,
+    val y: Float,
+    val alpha: Float,
+    val size: Float,
+    val speedX: Float
 )
 
 private data class Snowflake(
@@ -902,6 +1072,50 @@ private fun generateSunBeams(): List<SunBeam> {
     }
 }
 
+private fun generateLightRays(): List<LightRay> {
+    val colors = listOf(
+        Color(0xFFFFF9C4),  // 暖黄
+        Color(0xFFFFECB3),  // 浅橙
+        Color(0xFFFFF8E1)   // 奶白
+    )
+    return List(8) {
+        LightRay(
+            x = Random.nextFloat() * 1200f,
+            alpha = Random.nextFloat() * 0.08f + 0.04f,  // 0.04-0.12
+            length = Random.nextFloat() * 600f + 400f,  // 400-1000
+            width = Random.nextFloat() * 30f + 15f,  // 15-45
+            angleX = Random.nextFloat() * 0.3f - 0.15f,  // 轻微倾斜
+            speedX = Random.nextFloat() * 0.2f - 0.1f,
+            pulseSpeed = Random.nextFloat() * 0.5f + 0.2f,
+            pulseOffset = Random.nextFloat() * PI.toFloat() * 2f,
+            color = colors[Random.nextInt(colors.size)]
+        )
+    }
+}
+
+private fun generateFloatingMotes(): List<FloatingMote> {
+    val colors = listOf(
+        Color(0xFFFFF9C4),  // 暖黄
+        Color(0xFFFFECB3),  // 浅橙
+        Color(0xFFFFF8E1),  // 奶白
+        Color(0xFFFFD54F),  // 金色
+        Color(0xFFFFFFE0)   // 浅黄
+    )
+    return List(30) {
+        FloatingMote(
+            x = Random.nextFloat() * 1200f,
+            y = Random.nextFloat() * 2000f,
+            alpha = Random.nextFloat() * 0.2f + 0.1f,  // 0.1-0.3
+            size = Random.nextFloat() * 3f + 1f,  // 1-4
+            speedX = Random.nextFloat() * 0.6f - 0.3f,
+            speedY = Random.nextFloat() * 0.4f - 0.2f,
+            pulseSpeed = Random.nextFloat() * 2f + 1f,
+            pulseOffset = Random.nextFloat() * PI.toFloat() * 2f,
+            color = colors[Random.nextInt(colors.size)]
+        )
+    }
+}
+
 private fun generateSunnyParticles(): List<LightSpot> {
     val colors = listOf(
         Color(0xFFFFF9C4),
@@ -953,6 +1167,53 @@ private fun generateRaindrops(): List<Raindrop> {
     }
 }
 
+// 背景雨层（小、淡、慢）
+private fun generateRaindropsBg(): List<Raindrop> {
+    return List(60) {
+        val speed = Random.nextFloat() * 6f + 8f
+        Raindrop(
+            x = Random.nextFloat() * 1200f,
+            y = Random.nextFloat() * 2000f,
+            alpha = Random.nextFloat() * 0.2f + 0.1f,  // 0.1-0.3
+            size = Random.nextFloat() * 1f + 0.3f,
+            speedX = Random.nextFloat() * 1.2f - 0.3f,
+            speedY = speed,
+            length = Random.nextFloat() * 15f + 10f,  // 10-25
+            thickness = Random.nextFloat() * 0.8f + 0.4f  // 0.4-1.2
+        )
+    }
+}
+
+// 前景雨层（大、明显、快）
+private fun generateRaindropsFg(): List<Raindrop> {
+    return List(40) {
+        val speed = Random.nextFloat() * 10f + 15f
+        Raindrop(
+            x = Random.nextFloat() * 1200f,
+            y = Random.nextFloat() * 2000f,
+            alpha = Random.nextFloat() * 0.35f + 0.25f,  // 0.25-0.6
+            size = Random.nextFloat() * 2f + 0.8f,
+            speedX = Random.nextFloat() * 2f - 0.5f,
+            speedY = speed,
+            length = Random.nextFloat() * 28f + 18f,  // 18-46
+            thickness = Random.nextFloat() * 1.5f + 0.8f  // 0.8-2.3
+        )
+    }
+}
+
+// 底部水雾
+private fun generateRainMist(): List<RainMist> {
+    return List(10) {
+        RainMist(
+            x = Random.nextFloat() * 1200f,
+            y = Random.nextFloat() * 150f + 50f,  // 底部区域
+            alpha = Random.nextFloat() * 0.12f + 0.05f,  // 0.05-0.17
+            size = Random.nextFloat() * 200f + 100f,  // 100-300
+            speedX = Random.nextFloat() * 1f + 0.3f  // 0.3-1.3
+        )
+    }
+}
+
 private fun generateSnowflakes(): List<Snowflake> {
     return List(50) {
         Snowflake(
@@ -993,6 +1254,48 @@ private fun generateClouds(): List<Cloud> {
             width = Random.nextFloat() * 200f + 150f,  // 150-350
             height = Random.nextFloat() * 60f + 40f,  // 40-100
             speedX = Random.nextFloat() * 0.8f + 0.3f  // 0.3-1.1
+        )
+    }
+}
+
+// 远景云层（小、淡、慢）
+private fun generateCloudsFar(): List<Cloud> {
+    return List(4) {
+        Cloud(
+            x = Random.nextFloat() * 1200f,
+            y = Random.nextFloat() * 400f + 50f,
+            alpha = Random.nextFloat() * 0.12f + 0.06f,  // 0.06-0.18
+            width = Random.nextFloat() * 120f + 80f,  // 80-200
+            height = Random.nextFloat() * 35f + 20f,  // 20-55
+            speedX = Random.nextFloat() * 0.4f + 0.2f  // 0.2-0.6
+        )
+    }
+}
+
+// 中景云层
+private fun generateCloudsMid(): List<Cloud> {
+    return List(5) {
+        Cloud(
+            x = Random.nextFloat() * 1200f,
+            y = Random.nextFloat() * 600f + 100f,
+            alpha = Random.nextFloat() * 0.15f + 0.1f,  // 0.1-0.25
+            width = Random.nextFloat() * 180f + 120f,  // 120-300
+            height = Random.nextFloat() * 50f + 30f,  // 30-80
+            speedX = Random.nextFloat() * 0.6f + 0.3f  // 0.3-0.9
+        )
+    }
+}
+
+// 近景云层（大、明显、快）
+private fun generateCloudsNear(): List<Cloud> {
+    return List(3) {
+        Cloud(
+            x = Random.nextFloat() * 1200f,
+            y = Random.nextFloat() * 500f + 200f,
+            alpha = Random.nextFloat() * 0.18f + 0.12f,  // 0.12-0.3
+            width = Random.nextFloat() * 250f + 180f,  // 180-430
+            height = Random.nextFloat() * 70f + 45f,  // 45-115
+            speedX = Random.nextFloat() * 0.8f + 0.5f  // 0.5-1.3
         )
     }
 }
