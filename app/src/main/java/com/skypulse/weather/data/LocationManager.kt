@@ -328,10 +328,6 @@ class LocationManager @Inject constructor(
         return result?.value
     }
 
-    suspend fun requestSystemOrIpLocation(highAccuracy: Boolean = false): CachedLocation? {
-        return requestBestLocation(highAccuracy)
-    }
-
     private suspend fun requestBestLocationInternal(
         highAccuracy: Boolean = false,
         totalTimeoutMillis: Long

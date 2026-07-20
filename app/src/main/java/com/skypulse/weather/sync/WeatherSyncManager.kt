@@ -2,7 +2,6 @@
 
 import android.util.Log
 import com.skypulse.weather.data.LocationManager
-import com.skypulse.weather.data.local.database.WeatherDao
 import com.skypulse.weather.data.remote.SkyconCalibrator
 import com.skypulse.weather.model.City
 import com.skypulse.weather.model.WeatherResponse
@@ -34,8 +33,7 @@ class WeatherSyncManager @Inject constructor(
     private val repository: WeatherRepository,
     private val cityRepository: CityRepository,
     private val locationManager: LocationManager,
-    private val skyconCalibrator: SkyconCalibrator,
-    @Suppress("unused") private val weatherDao: WeatherDao
+    private val skyconCalibrator: SkyconCalibrator
 ) {
 
     companion object {

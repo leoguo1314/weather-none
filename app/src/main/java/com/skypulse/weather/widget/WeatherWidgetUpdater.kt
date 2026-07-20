@@ -703,37 +703,6 @@ object WeatherWidgetUpdater {
         }
     }
 
-    private fun getWindText(speed: Double?, direction: Double?): String {
-        if (speed == null) return "--"
-        val windLevel = when {
-            speed < 1 -> "0级"
-            speed < 6 -> "1级"
-            speed < 12 -> "2级"
-            speed < 20 -> "3级"
-            speed < 29 -> "4级"
-            speed < 39 -> "5级"
-            speed < 50 -> "6级"
-            speed < 62 -> "7级"
-            speed < 75 -> "8级"
-            speed < 89 -> "9级"
-            speed < 103 -> "10级"
-            speed < 117 -> "11级"
-            else -> "12级"
-        }
-        val dir = when {
-            direction == null -> ""
-            direction < 22.5 || direction >= 337.5 -> "北"
-            direction < 67.5 -> "东北"
-            direction < 112.5 -> "东"
-            direction < 157.5 -> "东南"
-            direction < 202.5 -> "南"
-            direction < 247.5 -> "西南"
-            direction < 292.5 -> "西"
-            else -> "西北"
-        }
-        return "${dir}风$windLevel"
-    }
-
     private fun getWindDirectionText(direction: Double?, speed: Double?): String {
         val dir = when {
             direction == null -> ""
@@ -765,20 +734,6 @@ object WeatherWidgetUpdater {
             " ${l}级"
         } else ""
         return "$dir$level"
-    }
-
-    private fun getWindDirectionOnly(direction: Double?): String {
-        return when {
-            direction == null -> "--"
-            direction < 22.5 || direction >= 337.5 -> "北风"
-            direction < 67.5 -> "东北风"
-            direction < 112.5 -> "东风"
-            direction < 157.5 -> "东南风"
-            direction < 202.5 -> "南风"
-            direction < 247.5 -> "西南风"
-            direction < 292.5 -> "西风"
-            else -> "西北风"
-        }
     }
 
 }

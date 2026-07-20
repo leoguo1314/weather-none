@@ -967,18 +967,6 @@ private data class Cloud(
     val speedX: Float
 )
 
-private data class LightSpot(
-    val x: Float,
-    val y: Float,
-    val alpha: Float,
-    val size: Float,
-    val speedX: Float,
-    val speedY: Float,
-    val pulseSpeed: Float,
-    val pulseOffset: Float,
-    val color: Color
-)
-
 private data class Star(
     val x: Float,
     val y: Float,
@@ -1017,17 +1005,6 @@ private data class Snowflake(
     val wobbleAmplitude: Float,
     val wobbleSpeed: Float,
     val wobbleOffset: Float
-)
-
-private data class FogP(
-    val x: Float,
-    val y: Float,
-    val alpha: Float,
-    val size: Float,
-    val speedX: Float,
-    val speedY: Float,
-    val scaleX: Float,
-    val scaleY: Float
 )
 
 private data class WindP(
@@ -1110,28 +1087,6 @@ private fun generateFloatingMotes(): List<FloatingMote> {
             speedX = Random.nextFloat() * 0.6f - 0.3f,
             speedY = Random.nextFloat() * 0.4f - 0.2f,
             pulseSpeed = Random.nextFloat() * 2f + 1f,
-            pulseOffset = Random.nextFloat() * PI.toFloat() * 2f,
-            color = colors[Random.nextInt(colors.size)]
-        )
-    }
-}
-
-private fun generateSunnyParticles(): List<LightSpot> {
-    val colors = listOf(
-        Color(0xFFFFF9C4),
-        Color(0xFFFFECB3),
-        Color(0xFFFFF8E1),
-        Color(0xFFFFD54F)
-    )
-    return List(15) {
-        LightSpot(
-            x = Random.nextFloat() * 1200f,
-            y = Random.nextFloat() * 2000f,
-            alpha = Random.nextFloat() * 0.12f + 0.04f,
-            size = Random.nextFloat() * 50f + 25f,
-            speedX = Random.nextFloat() * 0.4f - 0.2f,
-            speedY = Random.nextFloat() * 0.2f - 0.1f,
-            pulseSpeed = Random.nextFloat() * 1.2f + 0.4f,
             pulseOffset = Random.nextFloat() * PI.toFloat() * 2f,
             color = colors[Random.nextInt(colors.size)]
         )
@@ -1226,34 +1181,6 @@ private fun generateSnowflakes(): List<Snowflake> {
             wobbleAmplitude = Random.nextFloat() * 25f + 8f,
             wobbleSpeed = Random.nextFloat() * 1.8f + 0.8f,
             wobbleOffset = Random.nextFloat() * PI.toFloat() * 2f
-        )
-    }
-}
-
-private fun generateFogParticles(): List<FogP> {
-    return List(12) {
-        FogP(
-            x = Random.nextFloat() * 1200f,
-            y = Random.nextFloat() * 2000f,
-            alpha = Random.nextFloat() * 0.12f + 0.04f,
-            size = Random.nextFloat() * 180f + 80f,
-            speedX = Random.nextFloat() * 1.2f + 0.4f,
-            speedY = Random.nextFloat() * 0.2f - 0.1f,
-            scaleX = Random.nextFloat() * 0.4f + 0.7f,
-            scaleY = Random.nextFloat() * 0.25f + 0.35f
-        )
-    }
-}
-
-private fun generateClouds(): List<Cloud> {
-    return List(6) {
-        Cloud(
-            x = Random.nextFloat() * 1200f,
-            y = Random.nextFloat() * 800f + 100f,  // 主要在上半部分
-            alpha = Random.nextFloat() * 0.15f + 0.08f,  // 0.08-0.23
-            width = Random.nextFloat() * 200f + 150f,  // 150-350
-            height = Random.nextFloat() * 60f + 40f,  // 40-100
-            speedX = Random.nextFloat() * 0.8f + 0.3f  // 0.3-1.1
         )
     }
 }
