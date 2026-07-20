@@ -33,17 +33,30 @@ internal data class AlertItem(val title: String, val level: String?)
 internal fun AlertBannerSlot(
     alerts: List<AlertItem>,
     modifier: Modifier = Modifier,
-    onClick: (Int) -> Unit = {}
+    onClick: (Int) -> Unit = {},
+    showBookmark: Boolean = false,
+    isBookmarked: Boolean = false,
+    onBookmarkClick: () -> Unit = {}
 ) {
-    Box(
+    Row(
         modifier = modifier
             .fillMaxWidth()
-            .height(36.dp)
+            .height(36.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        if (alerts.isNotEmpty()) {
-            Box(modifier = Modifier.padding(top = 8.dp)) {
-                AlertBanner(alerts = alerts, onClick = onClick)
+        Box(modifier = Modifier.weight(1f)) {
+            if (alerts.isNotEmpty()) {
+                Box(modifier = Modifier.padding(top = 8.dp)) {
+                    AlertBanner(alerts = alerts, onClick = onClick)
+                }
             }
+        }
+        if (showBookmark) {
+            BookmarkBanner(
+                isBookmarked = isBookmarked,
+                onClick = onBookmarkClick
+            )
         }
     }
 }

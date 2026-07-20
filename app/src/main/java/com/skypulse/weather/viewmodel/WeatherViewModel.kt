@@ -392,6 +392,35 @@ class WeatherViewModel @Inject constructor(
 
     // ============ City Management ============
 
+    /**
+     * 判断当前定位城市是否已被收藏（多城市列表中是否存在坐标接近的非定位城市）。
+     * 使用坐标容差约 0.0002 度（约 20 米），避免浮点精度问题。
+     */
+    val isCurrentLocationBookmarked: Boolean
+        get() {
+            val cities = _savedCities.value
+            val currentLoc = cities.firstOrNull { it.isCurrentLocation } ?: return false
+            return cities.any {
+                !it.isCurrentLocation &&
+                    kotlin.math.abs(it.latitude - currentLoc.latitude) < 0.0002 &&
+                    kotlin.math.abs(it.longitude - currentLoc.longitude) < 0.0002
+            }
+        }
+
+    /**
+     * 收藏当前定位城市：使用缓存的精确地址名称和坐标添加到多城市列表。
+     * 如果已收藏则不执行任何操作。
+     */
+    fun bookmarkCurrentLocation() {
+        if (isCurrentLocationBookmarked) return
+        val currentLoc = _savedCities.value.firstOrNull { it.isCurrentLocation } ?: return
+        val cachedLoc = locationManager.getCachedLocation()
+        val name = cachedLoc?.name ?: currentLoc.name.takeIf { it != "当前定位" } ?: "收藏位置"
+        val lon = cachedLoc?.longitude ?: currentLoc.longitude
+        val lat = cachedLoc?.latitude ?: currentLoc.latitude
+        addCity(name, lon, lat)
+    }
+
     fun addCity(name: String, longitude: Double, latitude: Double) {
         viewModelScope.launch {
             val (city, updatedCities) = manageCityUseCase.addCity(name, longitude, latitude)

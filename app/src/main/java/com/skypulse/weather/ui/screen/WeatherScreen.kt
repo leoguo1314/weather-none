@@ -79,6 +79,7 @@ fun WeatherScreen(
     val onboardingReady by viewModel.onboardingReady.collectAsStateWithLifecycle()
     val settings by settingsViewModel.settings.collectAsStateWithLifecycle()
     val isPremium by settingsViewModel.isPremium.collectAsStateWithLifecycle()
+    var showMembershipDialog by remember { mutableStateOf(false) }
     // 免费用户定位名称截断到区/县级（取空格前第一段）
     val effectiveLocationName by remember {
         derivedStateOf {
@@ -227,6 +228,13 @@ fun WeatherScreen(
             }
 
             AppScreen.CityDetail -> {
+                if (showMembershipDialog) {
+                    MembershipDialog(
+                        onDismiss = { showMembershipDialog = false },
+                        onActivate = { code -> settingsViewModel.activateCode(code) },
+                        deviceId = settingsViewModel.getDeviceId()
+                    )
+                }
                 WeatherBackground(skycon = skycon, daily = daily) {
                     Box(modifier = Modifier.fillMaxSize()) {
                         when (val state = uiState) {
@@ -321,6 +329,20 @@ fun WeatherScreen(
                                                     null
                                                 }
                                             }
+                                            // 收藏状态：定位城市看是否已收藏，克隆城市始终为已收藏
+                                            val isBookmarked = remember(city, savedCities) {
+                                                if (city?.isCurrentLocation == true) {
+                                                    viewModel.isCurrentLocationBookmarked
+                                                } else {
+                                                    true
+                                                }
+                                            }
+                                            val showBookmarkBtn = remember(city, isPremium, isBookmarked) {
+                                                isPremium && (
+                                                    (city?.isCurrentLocation == true && !isBookmarked) ||
+                                                    (city?.isCurrentLocation != true)
+                                                )
+                                            }
                                             val pageScrollState = scrollStates.getOrPut(city?.id ?: "current_location") { ScrollState(0) }
                                             if (contentState != null) {
                                                 WeatherContentBody(
@@ -329,7 +351,20 @@ fun WeatherScreen(
                                                     settings = settings,
                                                     isPremium = isPremium,
                                                     onRefresh = { viewModel.refresh() },
-                                                    onAlertClick = { viewModel.navigateToAlertDetail(0) }
+                                                    onAlertClick = { viewModel.navigateToAlertDetail(0) },
+                                                    showBookmark = showBookmarkBtn,
+                                                    isBookmarked = isBookmarked,
+                                                    onBookmarkClick = {
+                                                        if (isPremium) {
+                                                            if (city?.isCurrentLocation == true) {
+                                                                viewModel.bookmarkCurrentLocation()
+                                                            } else if (city != null) {
+                                                                viewModel.removeCity(city.id)
+                                                            }
+                                                        } else {
+                                                            showMembershipDialog = true
+                                                        }
+                                                    }
                                                 )
                                             } else {
                                                 LoadingShimmer(modifier = Modifier.fillMaxSize())
@@ -525,7 +560,10 @@ private fun WeatherContentBody(
     settings: WeatherSettings,
     isPremium: Boolean = true,
     onRefresh: () -> Unit = {},
-    onAlertClick: (Int) -> Unit = {}
+    onAlertClick: (Int) -> Unit = {},
+    showBookmark: Boolean = false,
+    isBookmarked: Boolean = false,
+    onBookmarkClick: () -> Unit = {}
 ) {
     val result = state.weather.result
     val realtime = result?.realtime
@@ -584,7 +622,7 @@ private fun WeatherContentBody(
             AlertBannerSlot(alerts = alerts, onClick = { idx ->
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 onAlertClick(idx)
-            })
+            }, showBookmark = showBookmark, isBookmarked = isBookmarked, onBookmarkClick = onBookmarkClick)
 
             CurrentWeather(
                 realtime = realtime,
