@@ -1,6 +1,7 @@
 ﻿package com.skypulse.weather.ui.screen
 
 import android.Manifest
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -34,9 +35,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import com.skypulse.weather.ui.theme.SunnyGradient
 import com.skypulse.weather.ui.theme.TextPrimary
 import com.skypulse.weather.ui.theme.TextSecondary
@@ -46,6 +49,16 @@ fun PermissionOnboardingScreen(
     onFinished: () -> Unit,
     onPermissionDenied: () -> Unit = {}
 ) {
+    val context = LocalContext.current
+
+    // 检查定位权限是否已授予
+    fun hasLocationPermission(): Boolean {
+        return ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
+                android.content.pm.PackageManager.PERMISSION_GRANTED ||
+            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) ==
+                android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
+
     // 处理定位权限回调：授权则进入主页面，拒绝则退出 APP
     val locationLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
@@ -53,18 +66,22 @@ fun PermissionOnboardingScreen(
         val granted = results.values.any { it }
         if (granted) onFinished() else onPermissionDenied()
     }
-    
-    // 处理通知权限回调，完成后触发定位权限
+
+    // 处理通知权限回调，完成后检查并请求定位权限
     val notificationLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { _ ->
         // 不管用户是否授权，都继续请求定位权限
-        locationLauncher.launch(
-            arrayOf(
-                Manifest.permission.ACCESS_FINE_LOCATION,
-                Manifest.permission.ACCESS_COARSE_LOCATION
+        if (hasLocationPermission()) {
+            onFinished()
+        } else {
+            locationLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
             )
-        )
+        }
     }
 
     val gradientBrush = Brush.verticalGradient(
@@ -185,7 +202,25 @@ fun PermissionOnboardingScreen(
 
         Button(
             onClick = {
-                notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                // 先检查是否需要请求通知权限：Android 13+ 才是运行时权限
+                val needNotification = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                    ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+                    android.content.pm.PackageManager.PERMISSION_GRANTED
+
+                if (needNotification) {
+                    notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                } else if (hasLocationPermission()) {
+                    // 通知权限不需要且定位权限已授予，直接进入主页
+                    onFinished()
+                } else {
+                    // 通知权限不需要，直接请求定位权限
+                    locationLauncher.launch(
+                        arrayOf(
+                            Manifest.permission.ACCESS_FINE_LOCATION,
+                            Manifest.permission.ACCESS_COARSE_LOCATION
+                        )
+                    )
+                }
             },
             modifier = Modifier
                 .fillMaxWidth()
