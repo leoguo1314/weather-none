@@ -48,12 +48,27 @@ fun WeatherEffectOverlay(
         skycon.contains("CLOUDY") -> {
             CloudyEffect(modifier)
         }
-        skycon.contains("RAIN") || skycon.contains("STORM") -> {
+        // THUNDER_SHOWER: 雷阵雨 - 雨+闪电
+        skycon == "THUNDER_SHOWER" -> {
+            ThunderShowerEffect(modifier)
+        }
+        // STORM_SNOW: 暴雪 - 必须在 STORM_RAIN 之前判断
+        skycon == "STORM_SNOW" -> {
+            SnowEffect(modifier)
+        }
+        // SLEET: 雨夹雪 - 雨+雪混合
+        skycon == "SLEET" -> {
+            SleetEffect(modifier)
+        }
+        // RAIN 相关: LIGHT_RAIN, MODERATE_RAIN, HEAVY_RAIN, STORM_RAIN
+        skycon.contains("RAIN") -> {
             RainEffect(modifier)
         }
+        // SNOW 相关: LIGHT_SNOW, MODERATE_SNOW, HEAVY_SNOW
         skycon.contains("SNOW") -> {
             SnowEffect(modifier)
         }
+        // 霾/雾/浮尘/沙尘
         skycon.contains("HAZE") || skycon == "FOG" || skycon == "DUST" || skycon == "SAND" -> {
             FogEffect(modifier)
         }
@@ -606,6 +621,161 @@ private fun WindEffect(modifier: Modifier) {
                     radius = radiusX.coerceAtLeast(radiusY)
                 ),
                 radius = radiusX.coerceAtLeast(radiusY),
+                center = Offset(x, y)
+            )
+        }
+    }
+}
+
+/**
+ * 雷阵雨效果 - 雨滴 + 偶尔闪电
+ */
+@Composable
+private fun ThunderShowerEffect(modifier: Modifier) {
+    val raindrops = remember { generateRaindrops() }
+    var animationTime by remember { mutableStateOf(0f) }
+    var lastFrameTime by remember { mutableStateOf(0L) }
+    var lightningFlash by remember { mutableStateOf(0f) }
+    var nextLightningTime by remember { mutableStateOf(Random.nextFloat() * 5f + 3f) }
+
+    LaunchedEffect(Unit) {
+        while (isActive) {
+            withFrameMillis { frameTime ->
+                if (lastFrameTime > 0) {
+                    val delta = (frameTime - lastFrameTime) / 1000f
+                    animationTime += delta
+
+                    // 闪电效果
+                    if (animationTime >= nextLightningTime) {
+                        lightningFlash = 1f
+                        nextLightningTime = animationTime + Random.nextFloat() * 6f + 4f
+                    }
+                    // 闪电衰减
+                    if (lightningFlash > 0f) {
+                        lightningFlash = (lightningFlash - delta * 4f).coerceAtLeast(0f)
+                    }
+                }
+                lastFrameTime = frameTime
+            }
+        }
+    }
+
+    Canvas(modifier = modifier.fillMaxSize()) {
+        // 绘制雨滴
+        raindrops.forEach { drop ->
+            val speedFactor = 180f
+            val x = ((drop.x + animationTime * drop.speedX * 35) % (size.width + 100f)) - 50f
+            val y = ((drop.y + animationTime * drop.speedY * speedFactor) % (size.height + drop.length)) - drop.length
+
+            val endX = x + drop.speedX * drop.length * 0.15f
+            val endY = y + drop.length
+
+            drawLine(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = drop.alpha * 0.1f),
+                        Color.White.copy(alpha = drop.alpha * 0.6f),
+                        Color.White.copy(alpha = drop.alpha)
+                    ),
+                    startY = y,
+                    endY = endY
+                ),
+                start = Offset(x, y),
+                end = Offset(endX, endY),
+                strokeWidth = drop.thickness,
+                cap = StrokeCap.Round
+            )
+
+            drawCircle(
+                color = Color.White.copy(alpha = drop.alpha * 0.8f),
+                radius = drop.thickness * 0.8f,
+                center = Offset(endX, endY)
+            )
+        }
+
+        // 绘制闪电闪光效果（整体屏幕闪烁）
+        if (lightningFlash > 0f) {
+            drawRect(
+                color = Color.White.copy(alpha = lightningFlash * 0.15f),
+                topLeft = Offset.Zero,
+                size = size
+            )
+        }
+    }
+}
+
+/**
+ * 雨夹雪效果 - 雨滴 + 雪花混合
+ */
+@Composable
+private fun SleetEffect(modifier: Modifier) {
+    val raindrops = remember { generateRaindrops() }
+    val snowflakes = remember { generateSnowflakes() }
+    var animationTime by remember { mutableStateOf(0f) }
+    var lastFrameTime by remember { mutableStateOf(0L) }
+
+    LaunchedEffect(Unit) {
+        while (isActive) {
+            withFrameMillis { frameTime ->
+                if (lastFrameTime > 0) {
+                    val delta = (frameTime - lastFrameTime) / 1000f
+                    animationTime += delta
+                }
+                lastFrameTime = frameTime
+            }
+        }
+    }
+
+    Canvas(modifier = modifier.fillMaxSize()) {
+        // 绘制雨滴（数量减半）
+        raindrops.take(50).forEach { drop ->
+            val speedFactor = 160f
+            val x = ((drop.x + animationTime * drop.speedX * 30) % (size.width + 100f)) - 50f
+            val y = ((drop.y + animationTime * drop.speedY * speedFactor) % (size.height + drop.length)) - drop.length
+
+            val endX = x + drop.speedX * drop.length * 0.15f
+            val endY = y + drop.length
+
+            drawLine(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = drop.alpha * 0.1f),
+                        Color.White.copy(alpha = drop.alpha * 0.5f),
+                        Color.White.copy(alpha = drop.alpha * 0.8f)
+                    ),
+                    startY = y,
+                    endY = endY
+                ),
+                start = Offset(x, y),
+                end = Offset(endX, endY),
+                strokeWidth = drop.thickness * 0.8f,
+                cap = StrokeCap.Round
+            )
+        }
+
+        // 绘制雪花（数量减半）
+        snowflakes.take(25).forEach { flake ->
+            val wobble = sin(animationTime * flake.wobbleSpeed + flake.wobbleOffset)
+            val x = flake.x + wobble * flake.wobbleAmplitude
+            val y = ((flake.y + animationTime * flake.speedY * 25) % (size.height + flake.size * 4)) - flake.size * 2
+
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = flake.alpha * 0.4f),
+                        Color.White.copy(alpha = flake.alpha * 0.2f),
+                        Color.White.copy(alpha = 0f)
+                    ),
+                    center = Offset(x, y),
+                    radius = flake.size * 2f
+                ),
+                radius = flake.size * 2f,
+                center = Offset(x, y)
+            )
+
+            drawCircle(
+                color = Color.White.copy(alpha = flake.alpha * 0.8f),
+                radius = flake.size * 0.5f,
                 center = Offset(x, y)
             )
         }
