@@ -329,18 +329,20 @@ fun WeatherScreen(
                                                     null
                                                 }
                                             }
-                                            // 收藏状态：定位城市看是否已收藏，克隆城市始终为已收藏
+                                            // 收藏状态：定位城市看是否已收藏，克隆城市看是否接近定位城市
                                             val isBookmarked = remember(city, savedCities) {
                                                 if (city?.isCurrentLocation == true) {
                                                     viewModel.isCurrentLocationBookmarked
+                                                } else if (city != null) {
+                                                    viewModel.isBookmarkedCity(city)
                                                 } else {
-                                                    true
+                                                    false
                                                 }
                                             }
                                             val showBookmarkBtn = remember(city, isPremium, isBookmarked) {
                                                 isPremium && (
                                                     (city?.isCurrentLocation == true && !isBookmarked) ||
-                                                    (city?.isCurrentLocation != true)
+                                                    (city?.isCurrentLocation != true && isBookmarked)
                                                 )
                                             }
                                             val pageScrollState = scrollStates.getOrPut(city?.id ?: "current_location") { ScrollState(0) }
@@ -359,6 +361,11 @@ fun WeatherScreen(
                                                             if (city?.isCurrentLocation == true) {
                                                                 viewModel.bookmarkCurrentLocation()
                                                             } else if (city != null) {
+                                                                // 取消收藏：先回到定位城市，再删除
+                                                                val currentLocCity = savedCities.firstOrNull { it.isCurrentLocation }
+                                                                if (currentLocCity != null) {
+                                                                    viewModel.navigateToCityDetail(currentLocCity.id)
+                                                                }
                                                                 viewModel.removeCity(city.id)
                                                             }
                                                         } else {

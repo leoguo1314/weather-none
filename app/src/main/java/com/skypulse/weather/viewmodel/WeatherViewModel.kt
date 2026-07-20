@@ -408,6 +408,18 @@ class WeatherViewModel @Inject constructor(
         }
 
     /**
+     * 判断指定城市是否为"收藏克隆城市"（坐标接近当前定位城市，但不是定位城市本身）。
+     * 用于区分收藏克隆城市和手动搜索添加的城市。
+     */
+    fun isBookmarkedCity(city: City): Boolean {
+        if (city.isCurrentLocation) return false
+        val cities = _savedCities.value
+        val currentLoc = cities.firstOrNull { it.isCurrentLocation } ?: return false
+        return kotlin.math.abs(city.latitude - currentLoc.latitude) < 0.0002 &&
+            kotlin.math.abs(city.longitude - currentLoc.longitude) < 0.0002
+    }
+
+    /**
      * 收藏当前定位城市：使用缓存的精确地址名称和坐标添加到多城市列表。
      * 如果已收藏则不执行任何操作。
      */
