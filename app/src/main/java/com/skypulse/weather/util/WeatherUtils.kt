@@ -99,16 +99,6 @@ object WeatherUtils {
             }
         }
 
-        // Keep values for backwards compatibility in WeatherTheme model
-        val cardFrostColor = Color.Transparent
-        val topAlpha = 0f
-        val midAlpha = 0f
-        val bottomAlpha = 0f
-        val borderBrush = androidx.compose.ui.graphics.Brush.linearGradient(
-            colors = listOf(Color.Transparent, Color.Transparent)
-        )
-        val borderColor = Color.Transparent
-
         // --- Chart Colors ---
         val chartColors = if (isDay) {
             WeatherChartColors(
@@ -138,12 +128,6 @@ object WeatherUtils {
             isDay = isDay,
             backgroundGradient = background,
             cardTintColor = cardTintColor,
-            cardFrostColor = cardFrostColor,
-            cardTopAlpha = topAlpha,
-            cardMidAlpha = midAlpha,
-            cardBottomAlpha = bottomAlpha,
-            cardBorderBrush = borderBrush,
-            cardBorderColor = borderColor,
             chartColors = chartColors,
             precipitationIconColor = precipitationIconColor
         )

@@ -17,7 +17,6 @@ import com.skypulse.weather.util.WeatherUtils
 import com.skypulse.weather.data.MembershipRepository
 import java.text.SimpleDateFormat
 import java.util.*
-import kotlin.random.Random
 
 object WeatherWidgetUpdater {
 

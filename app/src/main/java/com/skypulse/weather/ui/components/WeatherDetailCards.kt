@@ -15,7 +15,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.skypulse.weather.model.RealtimeWeather
-import com.skypulse.weather.ui.theme.LocalWeatherTheme
 import com.skypulse.weather.ui.theme.TextPrimary
 import com.skypulse.weather.ui.theme.TextSecondary
 import com.skypulse.weather.util.WeatherUtils
@@ -106,8 +105,6 @@ private fun DetailSquareCard(
     unit: String = "",
     modifier: Modifier = Modifier
 ) {
-    val theme = LocalWeatherTheme.current
-
     GlassCard(
         modifier = modifier.aspectRatio(1f)
     ) {

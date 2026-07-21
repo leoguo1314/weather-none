@@ -2,7 +2,6 @@ package com.skypulse.weather.ui.theme
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 
 @Immutable
@@ -10,19 +9,11 @@ data class WeatherTheme(
     val isDay: Boolean,
     val backgroundGradient: List<Color>,
     val cardTintColor: Color,
-    val cardFrostColor: Color,
-    val cardTopAlpha: Float,
-    val cardMidAlpha: Float,
-    val cardBottomAlpha: Float,
-    val cardBorderBrush: Brush,
-    val cardBorderColor: Color,
     val chartColors: WeatherChartColors,
     val precipitationIconColor: Color = Color.White,
     val textPrimary: Color = Color.White,
     val textSecondary: Color = TextSecondary,
-    val textTertiary: Color = TextTertiary,
-    val pressedOverlay: Color = PressedOverlay,
-    val disabledOverlay: Color = DisabledOverlay
+    val textTertiary: Color = TextTertiary
 )
 
 @Immutable
@@ -42,12 +33,6 @@ val LocalWeatherTheme = staticCompositionLocalOf {
         isDay = true,
         backgroundGradient = SunnyGradient,
         cardTintColor = Color(0xFF1A3A5C),
-        cardFrostColor = Color.White,
-        cardTopAlpha = 0.28f,
-        cardMidAlpha = 0.18f,
-        cardBottomAlpha = 0.08f,
-        cardBorderBrush = Brush.linearGradient(listOf(Color.White, Color.Transparent)),
-        cardBorderColor = CardBorderDay,
         chartColors = WeatherChartColors(
             clear = Color(0xFFFFF8E1) to Color(0xFFFFD54F),
             partlyCloudy = Color(0xFFFFF8E1) to Color(0xFFFFECB3),
