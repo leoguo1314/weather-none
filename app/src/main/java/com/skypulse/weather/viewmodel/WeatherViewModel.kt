@@ -393,17 +393,17 @@ class WeatherViewModel @Inject constructor(
     // ============ City Management ============
 
     /**
-     * 判断当前定位城市是否已被收藏（当前定位的坐标是否与某个收藏城市接近）。
-     * 使用坐标容差约 0.0002 度（约 20 米），避免浮点精度问题。
+     * 判断当前定位城市是否已被收藏（当前定位的名称是否与某个收藏城市相同）。
      */
     val isCurrentLocationBookmarked: Boolean
         get() {
             val cities = _savedCities.value
             val currentLoc = cities.firstOrNull { it.isCurrentLocation } ?: return false
+            val currentName = locationManager.getCachedLocation()?.name
+                ?: currentLoc.name.takeIf { it != "当前定位" }
+                ?: return false
             return cities.any {
-                it.isBookmarked &&
-                    kotlin.math.abs(it.latitude - currentLoc.latitude) < 0.0002 &&
-                    kotlin.math.abs(it.longitude - currentLoc.longitude) < 0.0002
+                it.isBookmarked && it.name == currentName
             }
         }
 
