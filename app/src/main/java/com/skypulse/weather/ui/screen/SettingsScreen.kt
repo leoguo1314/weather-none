@@ -41,6 +41,8 @@ import com.skypulse.weather.data.WeatherSettings
 import com.skypulse.weather.ui.components.MembershipDialog
 import com.skypulse.weather.ui.components.VipBadge
 import com.skypulse.weather.ui.components.VipStatusCard
+import com.skypulse.weather.ui.components.InviteCodeCard
+import com.skypulse.weather.ui.components.InviteCodeRow
 import com.skypulse.weather.ui.theme.*
 import com.skypulse.weather.viewmodel.UpdateCheckResult
 
@@ -139,24 +141,38 @@ fun SettingsScreen(
 
                 // VIP / 会员激活
                 if (isPremium) {
-                    Box(modifier = Modifier.padding(horizontal = SkyPulseDesignSystem.Spacing.screenHorizontal)) {
-                        VipStatusCard()
+                    if (deviceId.isNotEmpty()) {
+                        val inviteCode = remember(deviceId) { "sky-$deviceId" }
+                        Box(modifier = Modifier.padding(horizontal = SkyPulseDesignSystem.Spacing.screenHorizontal)) {
+                            VipStatusCard(inviteCode = inviteCode)
+                        }
+                    } else {
+                        Box(modifier = Modifier.padding(horizontal = SkyPulseDesignSystem.Spacing.screenHorizontal)) {
+                            VipStatusCard()
+                        }
                     }
                 } else {
                     SectionHeader("会员")
                     IosCard {
-                        SimpleItem(
-                            title = "激活会员",
-                            subtitle = buildAnnotatedString {
-                                append("¥19.9成为")
-                                withStyle(SpanStyle(color = Color(0xFFFFC125), fontWeight = FontWeight.Bold)) {
-                                    append("永久会员")
-                                }
-                                append("解锁所有高级功能")
-                            },
-                            titleColor = IosAccentBlue,
-                            onClick = { showMembershipDialog = true }
-                        )
+                        Column {
+                            SimpleItem(
+                                title = "激活会员",
+                                subtitle = buildAnnotatedString {
+                                    append("¥19.9成为")
+                                    withStyle(SpanStyle(color = Color(0xFFFFC125), fontWeight = FontWeight.Bold)) {
+                                        append("永久会员")
+                                    }
+                                    append("解锁所有高级功能")
+                                },
+                                titleColor = IosAccentBlue,
+                                onClick = { showMembershipDialog = true }
+                            )
+                            // 免费用户邀请码显示在卡片底部
+                            if (deviceId.isNotEmpty()) {
+                                val inviteCode = remember(deviceId) { "sky-$deviceId" }
+                                InviteCodeRow(inviteCode = inviteCode)
+                            }
+                        }
                     }
                 }
 
