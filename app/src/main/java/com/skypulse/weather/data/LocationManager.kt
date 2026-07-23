@@ -350,7 +350,7 @@ class LocationManager @Inject constructor(
             )
             if (amapLoc != null) {
                 val directName = resolveLocationName(amapLoc)
-                val name = if (directName != "未知位置" && directName.isNotBlank()) {
+                var name = if (directName != "未知位置" && directName.isNotBlank()) {
                     directName
                 } else {
                     reverseGeocode(
@@ -361,7 +361,50 @@ class LocationManager @Inject constructor(
                     )
                 }
                 // 高德 SDK 返回了城市或区级字段 → 名称可靠；全 null → 仅逆地理编码，可能不完整
-                val isReliableName = !amapLoc.cityName.isNullOrBlank() || !amapLoc.districtName.isNullOrBlank()
+                var isReliableName = !amapLoc.cityName.isNullOrBlank() || !amapLoc.districtName.isNullOrBlank()
+                
+                // 语义字段为空时，等待5秒后重试一次，给高德 SDK 时间获取完整数据
+                if (!isReliableName) {
+                    locI("amap_unreliable_wait_retry: city=${amapLoc.cityName}, district=${amapLoc.districtName}, waiting 5s")
+                    kotlinx.coroutines.delay(5000L)
+                    
+                    val retryLoc = amapLocationProvider.requestLocation(
+                        highAccuracy = profile.highAccuracy,
+                        timeoutMillis = profile.timeoutMillis
+                    )
+                    if (retryLoc != null) {
+                        val retryReliable = !retryLoc.cityName.isNullOrBlank() || !retryLoc.districtName.isNullOrBlank()
+                        if (retryReliable) {
+                            val retryDirectName = resolveLocationName(retryLoc)
+                            name = if (retryDirectName != "未知位置" && retryDirectName.isNotBlank()) {
+                                retryDirectName
+                            } else {
+                                reverseGeocode(
+                                    retryLoc.latitude,
+                                    retryLoc.longitude,
+                                    forceRefresh = highAccuracy,
+                                    accuracy = retryLoc.accuracy
+                                )
+                            }
+                            isReliableName = true
+                            locI("amap_unreliable_retry_success: city=${retryLoc.cityName}, district=${retryLoc.districtName}, name=${name.safeLogValue()}")
+                            Log.i(TAG, "高德语义字段重试成功: city=${retryLoc.cityName}, district=${retryLoc.districtName}")
+                            return applyAntiJitter(
+                                retryLoc.latitude,
+                                retryLoc.longitude,
+                                name,
+                                retryLoc.accuracy,
+                                retryLoc.time,
+                                highAccuracy,
+                                isReliableName
+                            )
+                        }
+                        locI("amap_unreliable_retry_still_unreliable: city=${retryLoc.cityName}, district=${retryLoc.districtName}")
+                    } else {
+                        locI("amap_unreliable_retry_null")
+                    }
+                }
+                
                 Log.i(TAG, "高德主定位成功: lat=${amapLoc.latitude}, lon=${amapLoc.longitude}, name=$name, isReliableName=$isReliableName")
                 locI("amap_primary_used: elapsed=${elapsedSince(amapStartMs)}ms, total=${elapsedSince(startMs)}ms, directName=${directName.safeLogValue()}, name=${name.safeLogValue()}, isReliableName=$isReliableName, ${amapLoc.locSummary()}")
                 return applyAntiJitter(
