@@ -107,7 +107,7 @@ private fun windLabel(wind: HourlyWind?): String {
     val dir = WeatherUtils.formatWindDirection(wind.direction)
     val level = WeatherUtils.formatWindSpeed(wind.speed)
     if (dir.isEmpty() && level == "--") return ""
-    return "$dir$level"
+    return "$dir${level}级"
 }
 
 private fun gustLabel(speed: Double?): String {
@@ -405,7 +405,7 @@ private fun HourlyTemperatureChart(
             Spacer(modifier = Modifier.height(6.dp))
         }
 
-        val tagWidth = 56.dp
+        val tagWidth = 62.dp
 
         // AQI Row
         if (showAqi) {
