@@ -32,20 +32,20 @@ object WeatherUtils {
         if (isDay) {
             cardTintColor = when {
                 skycon == null || skycon.contains("CLEAR") -> {
-                    // Sunny / Clear: subtle deep-blue veil keeps white text readable on bright sky.
-                    Color(0xFF0F3F6E).copy(alpha = 0.20f)
+                    // Sunny / Clear: 亮蓝色透明，比背景更亮形成层次
+                    Color(0xFF80C8F0).copy(alpha = 0.40f)
                 }
                 skycon.contains("PARTLY_CLOUDY") -> {
-                    // Partly cloudy: blue-gray veil keeps cards distinct on bright cloud layers.
-                    Color(0xFF16456B).copy(alpha = 0.24f)
+                    // Partly cloudy: 亮蓝色透明，比背景更亮形成层次
+                    Color(0xFF90D0F0).copy(alpha = 0.38f)
                 }
                 skycon.contains("CLOUDY") -> {
-                    // Cloudy: 明亮阴天，微蓝底色透出更清澈的毛玻璃感
-                    Color(0xFFB0C4D8).copy(alpha = 0.22f)
+                    // Cloudy: 深色透明，阴天氛围
+                    Color(0xFF3A4F63).copy(alpha = 0.35f)
                 }
                 skycon.contains("RAIN") || skycon.contains("STORM") -> {
-                    // Rainy / Stormy: Flat slate-blue panel to contrast rain
-                    Color(0xFF1E293B).copy(alpha = 0.25f)
+                    // Rainy / Stormy: 深色透明，雨天沉稳
+                    Color(0xFF1E293B).copy(alpha = 0.35f)
                 }
                 skycon.contains("SNOW") -> {
                     // Snowy: Dark slate panel for high contrast against snowy glare
