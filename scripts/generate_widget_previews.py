@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Generate widget preview PNG images for 4x2 widgets."""
 from PIL import Image, ImageDraw, ImageFont
-import os
 
 def create_gradient(width, height):
     """Create a blue gradient background."""
@@ -27,6 +26,10 @@ def create_gradient(width, height):
     
     return img
 
+def create_transparent(width, height):
+    """Create a transparent background."""
+    return Image.new('RGBA', (width, height), (0, 0, 0, 0))
+
 def draw_rounded_rect(draw, xy, radius, fill):
     """Draw a rounded rectangle."""
     x1, y1, x2, y2 = xy
@@ -37,75 +40,23 @@ def draw_rounded_rect(draw, xy, radius, fill):
     draw.pieslice([x1, y2 - 2*radius, x1 + 2*radius, y2], 90, 180, fill=fill)
     draw.pieslice([x2 - 2*radius, y2 - 2*radius, x2, y2], 0, 90, fill=fill)
 
-def create_4x2_preview():
-    """Create a 4x2 widget preview image."""
-    width, height = 360, 180
-    img = create_gradient(width, height)
-    draw = ImageDraw.Draw(img)
-    
-    # Semi-transparent white card
-    card_color = (255, 255, 255, 50)
-    draw_rounded_rect(draw, [10, 10, width-10, height-10], 18, card_color)
-    
-    # Try to use a system font
-    try:
-        font_large = ImageFont.truetype("arial.ttf", 36)
-        font_medium = ImageFont.truetype("arial.ttf", 14)
-        font_small = ImageFont.truetype("arial.ttf", 12)
-    except:
-        font_large = ImageFont.load_default()
-        font_medium = ImageFont.load_default()
-        font_small = ImageFont.load_default()
-    
-    # Left side: Clock, Date, City
-    white = (255, 255, 255, 255)
-    light_white = (255, 255, 255, 200)
-    
-    # Clock
-    draw.text((25, 30), "14:30", fill=white, font=font_large)
-    
-    # Date
-    draw.text((25, 75), "7月24日 星期四", fill=light_white, font=font_medium)
-    
-    # City
-    draw.text((25, 95), "北京市", fill=(255, 255, 255, 180), font=font_small)
-    
-    # Right side: Weather icon placeholder, description, temp
-    # Sun icon (circle)
-    sun_x, sun_y = 270, 40
-    draw.ellipse([sun_x-20, sun_y-20, sun_x+20, sun_y+20], fill=(255, 220, 100, 255))
-    
-    # Weather description
-    draw.text((245, 75), "晴", fill=light_white, font=font_medium)
-    
-    # Temp range
-    draw.text((230, 95), "-5° 3°", fill=(255, 255, 255, 180), font=font_small)
-    
-    # Bottom: 3-day forecast
-    for i, (day, temp) in enumerate([("今天", "-5° 3°"), ("周五", "-3° 5°"), ("周六", "-2° 6°")]):
-        x = 40 + i * 110
-        y = 130
-        
-        # Small sun icon
-        draw.ellipse([x-8, y-8, x+8, y+8], fill=(255, 220, 100, 255))
-        
-        # Day name
-        draw.text((x + 15, y - 10), day, fill=(255, 255, 255, 200), font=font_small)
-        
-        # Temp
-        draw.text((x + 15, y + 5), temp, fill=white, font=font_small)
-    
-    return img
-
 def create_medium_4x2_preview():
-    """Create a medium 4x2 widget preview image."""
+    """Create a medium 4x2 widget preview image (with gradient background)."""
     width, height = 360, 180
+    
+    # 先创建渐变背景
     img = create_gradient(width, height)
     draw = ImageDraw.Draw(img)
     
-    # Semi-transparent white card
-    card_color = (255, 255, 255, 50)
-    draw_rounded_rect(draw, [10, 10, width-10, height-10], 18, card_color)
+    # 圆角裁剪（模拟圆角效果）
+    mask = Image.new('L', (width, height), 0)
+    mask_draw = ImageDraw.Draw(mask)
+    draw_rounded_rect(mask_draw, [0, 0, width-1, height-1], 18, 255)
+    
+    # 应用圆角遮罩
+    result = Image.new('RGBA', (width, height), (0, 0, 0, 0))
+    result.paste(img, mask=mask)
+    draw = ImageDraw.Draw(result)
     
     try:
         font_large = ImageFont.truetype("arial.ttf", 36)
@@ -153,19 +104,75 @@ def create_medium_4x2_preview():
         # Temp
         draw.text((x + 10, y + 5), temp, fill=white, font=font_small)
     
+    return result
+
+def create_new_4x2_preview():
+    """Create a new 4x2 widget preview image (transparent background)."""
+    width, height = 360, 180
+    img = create_transparent(width, height)
+    draw = ImageDraw.Draw(img)
+    
+    try:
+        font_large = ImageFont.truetype("arial.ttf", 48)
+        font_medium = ImageFont.truetype("arial.ttf", 16)
+        font_small = ImageFont.truetype("arial.ttf", 14)
+    except:
+        font_large = ImageFont.load_default()
+        font_medium = ImageFont.load_default()
+        font_small = ImageFont.load_default()
+    
+    white = (255, 255, 255, 255)
+    light_white = (255, 255, 255, 200)
+    
+    # Left side: Clock, Date, City
+    # Clock
+    draw.text((20, 20), "14:30", fill=white, font=font_large)
+    
+    # Date
+    draw.text((20, 75), "7月24日 星期四", fill=light_white, font=font_medium)
+    
+    # City
+    draw.text((20, 95), "北京市", fill=(255, 255, 255, 180), font=font_small)
+    
+    # Right side: Weather icon, description, temp
+    # Sun icon (larger)
+    sun_x, sun_y = 280, 45
+    draw.ellipse([sun_x-25, sun_y-25, sun_x+25, sun_y+25], fill=(255, 220, 100, 255))
+    
+    # Weather description
+    draw.text((255, 80), "晴", fill=light_white, font=font_medium)
+    
+    # Temp range
+    draw.text((240, 100), "-5° 3°", fill=(255, 255, 255, 180), font=font_small)
+    
+    # Bottom: 3-day forecast
+    days = [("今天", "-5° 3°"), ("周五", "-3° 5°"), ("周六", "-2° 6°")]
+    for i, (day, temp) in enumerate(days):
+        x = 40 + i * 110
+        y = 145
+        
+        # Small sun icon
+        draw.ellipse([x-10, y-10, x+10, y+10], fill=(255, 220, 100, 255))
+        
+        # Day name
+        draw.text((x + 15, y - 10), day, fill=light_white, font=font_small)
+        
+        # Temp
+        draw.text((x + 15, y + 5), temp, fill=white, font=font_small)
+    
     return img
 
 if __name__ == "__main__":
     output_dir = "C:/Users/ttt/weather-none/app/src/main/res/drawable-nodpi"
     
-    # Generate new 4x2 preview
-    img1 = create_4x2_preview()
-    img1.save(os.path.join(output_dir, "widget_4x2_preview_image.png"))
-    print(f"Created widget_4x2_preview_image.png")
+    # Generate medium 4x2 preview (with gradient background)
+    img1 = create_medium_4x2_preview()
+    img1.save(f"{output_dir}/widget_medium_preview_image.png")
+    print(f"Created widget_medium_preview_image.png (with gradient background)")
     
-    # Generate medium 4x2 preview
-    img2 = create_medium_4x2_preview()
-    img2.save(os.path.join(output_dir, "widget_medium_preview_image.png"))
-    print(f"Created widget_medium_preview_image.png")
+    # Generate new 4x2 preview (transparent background)
+    img2 = create_new_4x2_preview()
+    img2.save(f"{output_dir}/widget_4x2_preview_image.png")
+    print(f"Created widget_4x2_preview_image.png (transparent background)")
     
     print("Done!")
