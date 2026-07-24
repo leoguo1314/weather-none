@@ -140,7 +140,7 @@ fun SettingsScreen(
                 // VIP / 会员激活
                 if (isPremium) {
                     Box(modifier = Modifier.padding(horizontal = SkyPulseDesignSystem.Spacing.screenHorizontal)) {
-                        VipStatusCard()
+                        VipStatusCard(deviceId = deviceId)
                     }
                 } else {
                     SectionHeader("会员")
