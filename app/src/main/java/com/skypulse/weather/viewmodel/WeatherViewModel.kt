@@ -272,6 +272,7 @@ class WeatherViewModel @Inject constructor(
                         val weather = repository.getWeatherFromCache(firstCity.id)
                         com.skypulse.weather.widget.WeatherWidgetProvider.refresh(appContext, weather, firstCity.name)
                         com.skypulse.weather.widget.WeatherWidgetMediumProvider.refresh(appContext, weather, firstCity.name)
+                        com.skypulse.weather.widget.WeatherWidget4x2Provider.refresh(appContext, weather, firstCity.name)
                     }
                 } catch (_: Exception) {}
             }

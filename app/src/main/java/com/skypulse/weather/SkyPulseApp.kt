@@ -6,6 +6,8 @@ import androidx.work.Configuration
 import com.skypulse.weather.notification.WeatherNotificationScheduler
 import com.skypulse.weather.util.FileLogger
 import com.skypulse.weather.widget.WeatherWidgetProvider
+import com.skypulse.weather.widget.WeatherWidgetMediumProvider
+import com.skypulse.weather.widget.WeatherWidget4x2Provider
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 
@@ -33,5 +35,7 @@ class SkyPulseApp : Application(), Configuration.Provider {
 
         WeatherNotificationScheduler.scheduleIfNeeded(this)
         WeatherWidgetProvider.enqueueWorker(this)
+        WeatherWidgetMediumProvider.enqueueWorker(this)
+        WeatherWidget4x2Provider.enqueueWorker(this)
     }
 }

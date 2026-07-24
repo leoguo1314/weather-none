@@ -735,5 +735,156 @@ object WeatherWidgetUpdater {
         return "$dir$level"
     }
 
+    fun update4x2Loading(context: Context, cityName: String? = null) {
+        try {
+            val manager = AppWidgetManager.getInstance(context)
+            val ids = manager.getAppWidgetIds(ComponentName(context, WeatherWidget4x2Provider::class.java))
+            if (ids.isEmpty()) {
+                FileLogger.w(TAG, "update4x2Loading: 无活跃 widget，跳过渲染")
+                return
+            }
+
+            val cityText = shortenLocation(cityName ?: "定位中...")
+
+            ids.forEach { widgetId ->
+                val views = RemoteViews(context.packageName, R.layout.widget_4x2)
+                views.setTextViewText(R.id.widget_city, cityText)
+                views.setTextViewText(R.id.widget_weather_desc, "")
+                views.setTextViewText(R.id.widget_temp_range, "--")
+
+                // Set placeholder for daily forecast items
+                for (i in 1..3) {
+                    val dayNameId = context.resources.getIdentifier("widget_day_name_$i", "id", context.packageName)
+                    val dayTempId = context.resources.getIdentifier("widget_day_temp_$i", "id", context.packageName)
+                    views.setTextViewText(dayNameId, "--")
+                    views.setTextViewText(dayTempId, "--")
+                }
+
+                views.setInt(R.id.widget_container, "setBackgroundColor", android.graphics.Color.TRANSPARENT)
+
+                val intent = Intent(context, MainActivity::class.java)
+                val pending = PendingIntent.getActivity(
+                    context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+                views.setOnClickPendingIntent(R.id.widget_container, pending)
+                manager.updateAppWidget(widgetId, views)
+            }
+            FileLogger.i(TAG, "update4x2Loading: 渲染定位占位态完成, widgetCount=${ids.size}")
+        } catch (e: Exception) {
+            FileLogger.e(TAG, "update4x2Loading: 渲染异常", e)
+        }
+    }
+
+    fun update4x2All(context: Context, weather: WeatherResponse?, cityName: String?) {
+        try {
+            val manager = AppWidgetManager.getInstance(context)
+            val ids = manager.getAppWidgetIds(ComponentName(context, WeatherWidget4x2Provider::class.java))
+            if (ids.isEmpty()) {
+                FileLogger.w(TAG, "update4x2All: 无活跃 widget，跳过渲染")
+                return
+            }
+
+            val realtime = weather?.result?.realtime
+            val daily = weather?.result?.daily
+            val skycon = realtime?.skycon
+            val cityText = shortenLocation(cityName ?: "--")
+
+            // Get weather info
+            val weatherInfo = WeatherUtils.getWeatherInfo(skycon)
+            val weatherIcon = weatherInfo.icon
+            val weatherDesc = weatherInfo.description
+
+            // Get daily temperature range for today
+            val dailyTemps = daily?.temperature
+            val dailySkycons = daily?.skycon
+            val todayDate = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
+            val todayTempIndex = dailyTemps?.indexOfFirst { it.date?.startsWith(todayDate) == true }?.coerceAtLeast(0) ?: 0
+            val todaySkyconIndex = dailySkycons?.indexOfFirst { it.date?.startsWith(todayDate) == true }?.coerceAtLeast(0) ?: 0
+
+            val todayMinTemp = dailyTemps?.getOrNull(todayTempIndex)?.min
+            val todayMaxTemp = dailyTemps?.getOrNull(todayTempIndex)?.max
+            val tempRangeText = if (todayMinTemp != null && todayMaxTemp != null) {
+                "${WeatherUtils.formatTemperature(todayMinTemp)} ${WeatherUtils.formatTemperature(todayMaxTemp)}"
+            } else "--"
+
+            // White color for rain icons
+            val whitePrecipColor = android.graphics.Color.WHITE
+
+            // Day names for forecast
+            val dayNames = arrayOf("周日", "周一", "周二", "周三", "周四", "周五", "周六")
+
+            FileLogger.i(TAG, "update4x2All: 渲染数据 — city=$cityText, weather=$weatherDesc, tempRange=$tempRangeText")
+
+            ids.forEach { widgetId ->
+                try {
+                    val views = RemoteViews(context.packageName, R.layout.widget_4x2)
+
+                    // Top left: City (Clock and Date are TextClock, auto-updated)
+                    views.setTextViewText(R.id.widget_city, cityText)
+
+                    // Top right: Weather icon, description, temp range
+                    val weatherIconBitmap = renderIcon(context, weatherIcon, whitePrecipColor)
+                    if (weatherIconBitmap != null) {
+                        views.setImageViewBitmap(R.id.widget_weather_icon, weatherIconBitmap)
+                    }
+                    views.setTextViewText(R.id.widget_weather_desc, weatherDesc)
+                    views.setTextViewText(R.id.widget_temp_range, tempRangeText)
+
+                    // Bottom: 3-day forecast
+                    val calendar = java.util.Calendar.getInstance()
+                    val today = calendar.get(java.util.Calendar.DAY_OF_WEEK)
+
+                    for (i in 0 until minOf(3, dailyTemps?.size ?: 0)) {
+                        val dayIndex = i + 1
+                        val dayNameId = context.resources.getIdentifier("widget_day_name_$dayIndex", "id", context.packageName)
+                        val dayIconId = context.resources.getIdentifier("widget_day_icon_$dayIndex", "id", context.packageName)
+                        val dayTempId = context.resources.getIdentifier("widget_day_temp_$dayIndex", "id", context.packageName)
+
+                        // Get day name
+                        val dayName = if (i == 0) {
+                            "今天"
+                        } else {
+                            val dayOfWeekIndex = (today + i - 1) % 7
+                            dayNames[dayOfWeekIndex]
+                        }
+
+                        // Get icon
+                        val daySkycon = dailySkycons?.getOrNull(todaySkyconIndex + i)?.value
+                        val dayWeatherInfo = if (daySkycon != null) WeatherUtils.getWeatherInfo(daySkycon) else null
+                        val dayIcon = dayWeatherInfo?.icon ?: "overcast"
+                        val iconBitmap = renderIcon(context, dayIcon, whitePrecipColor)
+
+                        // Get temperature
+                        val minTemp = dailyTemps?.getOrNull(todayTempIndex + i)?.min
+                        val maxTemp = dailyTemps?.getOrNull(todayTempIndex + i)?.max
+                        val tempStr = if (minTemp != null && maxTemp != null) {
+                            "${WeatherUtils.formatTemperature(minTemp)} ${WeatherUtils.formatTemperature(maxTemp)}"
+                        } else {
+                            WeatherUtils.formatTemperature(maxTemp)
+                        }
+
+                        views.setTextViewText(dayNameId, dayName)
+                        if (iconBitmap != null) {
+                            views.setImageViewBitmap(dayIconId, iconBitmap)
+                        }
+                        views.setTextViewText(dayTempId, tempStr)
+                    }
+
+                    views.setInt(R.id.widget_container, "setBackgroundColor", android.graphics.Color.TRANSPARENT)
+
+                    val intent = Intent(context, MainActivity::class.java)
+                    val pending = PendingIntent.getActivity(
+                        context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                    )
+                    views.setOnClickPendingIntent(R.id.widget_container, pending)
+                    manager.updateAppWidget(widgetId, views)
+                } catch (_: Exception) {}
+            }
+            FileLogger.i(TAG, "update4x2All: 渲染完成, widgetCount=${ids.size}")
+        } catch (e: Exception) {
+            FileLogger.e(TAG, "update4x2All: 渲染异常", e)
+        }
+    }
+
 }
 
