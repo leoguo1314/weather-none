@@ -336,6 +336,107 @@ private fun HourlyTemperatureChart(
                     startY = barTopY,
                     endY = canvasH
                 ))
+
+                // 绘制下雨效果 - 三层分布，统一角度
+                val skycon = skyconValues[i]
+                val isRain = skycon?.contains("RAIN") == true || skycon?.contains("STORM") == true
+                if (isRain && skycon != null) {
+                    val rainIntensity = when {
+                        skycon.contains("STORM") -> 4      // 暴雨
+                        skycon.contains("HEAVY_RAIN") -> 3  // 大雨
+                        skycon.contains("MODERATE_RAIN") -> 2 // 中雨
+                        else -> 1                           // 小雨
+                    }
+                    val rainColor = Color.White
+                    val barWidth = rightX - leftX
+                    val rainHeight = (canvasH - barTopY) * 0.5f
+
+                    if (barWidth > 0f && rainHeight > 0f) {
+                        // 裁剪区域 - 精确限制在当前柱子范围内
+                        clipRect(
+                            left = leftX,
+                            top = barTopY,
+                            right = rightX,
+                            bottom = canvasH
+                        ) {
+                            // 统一基础角度：向右倾斜约8度
+                            val baseSkewRatio = 0.14f
+
+                            // 三层定义：上、中、下
+                            // 每层有不同的起始位置、长度比例、透明度
+                            val layerConfigs = listOf(
+                                Triple(0.0f, 0.35f, 0.6f),   // 上层：从曲线开始，短雨滴，最亮
+                                Triple(0.15f, 0.5f, 0.45f),  // 中层：偏移15%，中等雨滴
+                                Triple(0.3f, 0.65f, 0.3f)    // 下层：偏移30%，长雨滴，较淡
+                            )
+
+                            // 根据强度确定总斜线数
+                            val totalLines = when (rainIntensity) {
+                                1 -> (barWidth / 20f).toInt().coerceAtLeast(2)
+                                2 -> (barWidth / 16f).toInt().coerceAtLeast(3)
+                                3 -> (barWidth / 12f).toInt().coerceAtLeast(4)
+                                else -> (barWidth / 9f).toInt().coerceAtLeast(5)
+                            }
+
+                            // 每条斜线随机分配到某一层
+                            for (j in 0 until totalLines) {
+                                val t = (j + 0.5f) / totalLines
+
+                                // 使用正弦函数生成伪随机数，决定这条线属于哪一层
+                                val layerRandom = kotlin.math.sin(t * 47.3f + j * 13.7f)
+                                val layerIndex = when {
+                                    layerRandom < -0.3f -> 0  // 上层
+                                    layerRandom < 0.3f -> 1   // 中层
+                                    else -> 2                  // 下层
+                                }
+                                val (layerOffset, lengthRatio, alphaRatio) = layerConfigs[layerIndex]
+
+                                // X位置：基础位置 + 小范围随机偏移
+                                val xOffset = kotlin.math.sin(t * 23.7f + j * 7.3f) * barWidth * 0.08f
+                                val x = (leftX + barWidth * t + xOffset).coerceIn(leftX, rightX)
+
+                                // 使用sampleSplineY获取曲线在该X位置的实际Y值
+                                val curveY = sampleSplineY(x)
+
+                                // 起始Y：从曲线位置 + 层偏移
+                                val startY = curveY + (rainHeight * layerOffset) + 2.dp.toPx()
+
+                                // 斜线长度：基础长度 × 层系数 × 随机变化
+                                val lengthVariation = 0.8f + 0.4f * kotlin.math.sin(t * 31.3f + j * 11.7f)
+                                val lineLength = rainHeight * lengthRatio * lengthVariation
+                                val endY = startY + lineLength
+
+                                // 统一角度 + 小范围自然变化（±2度）
+                                val angleVariation = kotlin.math.sin(t * 19.7f + j * 5.3f) * 0.03f
+                                val skew = lineLength * (baseSkewRatio + angleVariation)
+                                val endX = x + skew
+
+                                // 透明度：头轻脚重
+                                val bottomAlpha = alphaRatio * (0.85f + 0.15f * kotlin.math.sin(t * 11.3f + j * 3.7f))
+                                val topAlpha = bottomAlpha * 0.3f
+
+                                // 线条粗细
+                                val strokeWidth = (1.1f + 0.3f * kotlin.math.sin(t * 17.3f + j * 2.3f)).dp.toPx()
+
+                                // 绘制带渐变的斜线
+                                drawLine(
+                                    brush = Brush.verticalGradient(
+                                        colors = listOf(
+                                            rainColor.copy(alpha = topAlpha),
+                                            rainColor.copy(alpha = bottomAlpha)
+                                        ),
+                                        startY = startY,
+                                        endY = endY
+                                    ),
+                                    start = Offset(x, startY),
+                                    end = Offset(endX, endY),
+                                    strokeWidth = strokeWidth,
+                                    cap = StrokeCap.Round
+                                )
+                            }
+                        }
+                    }
+                }
             }
 
             if (points.size >= 2) {
