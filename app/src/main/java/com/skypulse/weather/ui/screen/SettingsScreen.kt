@@ -265,8 +265,23 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 // Premium benefits section
-                SectionHeader("付费权益")
+                SectionHeader("权益")
                 IosCard {
+                    // 天气动效 - 所有用户均已解锁
+                    SimpleItem(
+                        title = "天气动效",
+                        titleColor = IosTextPrimary,
+                        trailing = {
+                            Icon(
+                                imageVector = Icons.Outlined.Check,
+                                contentDescription = "已解锁",
+                                modifier = Modifier.size(18.dp),
+                                tint = IosAccentGreen
+                            )
+                        },
+                        onClick = { }
+                    )
+                    IosDivider()
                     if (!isPremium) {
                         // 未付费状态：显示锁定项
                         SimpleItem(
