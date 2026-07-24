@@ -37,7 +37,7 @@ object WeatherUtils {
                 }
                 skycon.contains("PARTLY_CLOUDY") -> {
                     // Partly cloudy: 亮蓝色透明，比背景更亮形成层次
-                    Color(0xFF90D0F0).copy(alpha = 0.38f)
+                    Color(0xFF80C0E0).copy(alpha = 0.35f)
                 }
                 skycon.contains("CLOUDY") -> {
                     // Cloudy: 深色透明，阴天氛围

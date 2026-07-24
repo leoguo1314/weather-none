@@ -56,9 +56,9 @@ val SunnyNightGradient = listOf(
 val PartialCloudGradient = listOf(
     Color(0xFF2870A8),  // 顶部清澈天蓝
     Color(0xFF3584BF),
-    Color(0xFF4498D2),
-    Color(0xFF55ABE0),
-    Color(0xFF68BDE8)   // 底部明亮浅蓝
+    Color(0xFF3C90C8),  // 中部稍深
+    Color(0xFF4CA0D8),  // 中下部稍深
+    Color(0xFF5EB2DE)   // 底部稍深
 )
 
 // Partly Cloudy (Night) — indigo to blue-violet
