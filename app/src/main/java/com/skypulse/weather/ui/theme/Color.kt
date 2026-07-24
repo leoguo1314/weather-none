@@ -52,13 +52,13 @@ val SunnyNightGradient = listOf(
     Color(0xFF234A72)
 )
 
-// Partly Cloudy (Day) — medium blue, slightly desaturated
+// Partly Cloudy (Day) — 明媚通透的多云天蓝，清透感接近晴天
 val PartialCloudGradient = listOf(
-    Color(0xFF2F6692),
-    Color(0xFF3F7EAA),
-    Color(0xFF5C98C0),
-    Color(0xFF78ABC9),
-    Color(0xFF9FC0D6)
+    Color(0xFF2870A8),  // 顶部清澈天蓝
+    Color(0xFF3584BF),
+    Color(0xFF4498D2),
+    Color(0xFF55ABE0),
+    Color(0xFF68BDE8)   // 底部明亮浅蓝
 )
 
 // Partly Cloudy (Night) — indigo to blue-violet
