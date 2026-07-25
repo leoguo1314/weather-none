@@ -56,8 +56,8 @@ android {
         applicationId = "com.skypulse.weather"
         minSdk = 26
         targetSdk = 35
-        versionCode = 947
-        versionName = "3.3.72"
+        versionCode = 952
+        versionName = "3.3.77"
 
         vectorDrawables {
             useSupportLibrary = true
@@ -133,7 +133,6 @@ dependencies {
     implementation(libs.compose.material3)
     implementation(libs.compose.material)
     implementation(libs.compose.animation)
-    implementation(libs.compose.material.icons.extended)
 
 
     // Networking

@@ -16,13 +16,8 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.LocationOn
-import androidx.compose.material.icons.outlined.MyLocation
-import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -40,6 +35,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import com.skypulse.weather.ui.components.LucideIcon
 import com.skypulse.weather.ui.theme.SunnyGradient
 import com.skypulse.weather.ui.theme.TextPrimary
 import com.skypulse.weather.ui.theme.TextSecondary
@@ -123,8 +119,8 @@ fun PermissionOnboardingScreen(
                     .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = Icons.Outlined.Notifications,
+                LucideIcon(
+                    name = "bell",
                     contentDescription = null,
                     tint = TextPrimary
                 )
@@ -151,8 +147,8 @@ fun PermissionOnboardingScreen(
                     .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = Icons.Outlined.LocationOn,
+                LucideIcon(
+                    name = "map-pin",
                     contentDescription = null,
                     tint = TextPrimary
                 )
@@ -179,8 +175,8 @@ fun PermissionOnboardingScreen(
                     .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = Icons.Outlined.MyLocation,
+                LucideIcon(
+                    name = "crosshair",
                     contentDescription = null,
                     tint = TextPrimary
                 )

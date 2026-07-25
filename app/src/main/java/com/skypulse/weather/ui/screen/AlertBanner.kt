@@ -8,7 +8,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -17,13 +16,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.StrokeJoin
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
+import com.skypulse.weather.ui.components.LucideIcon
 import com.skypulse.weather.ui.theme.TextSecondary
 import kotlinx.coroutines.delay
 
@@ -88,9 +83,11 @@ internal fun AlertBanner(alerts: List<AlertItem>, onClick: (Int) -> Unit = {}) {
                 modifier = Modifier.size(itemHeightDp),
                 contentAlignment = Alignment.Center
             ) {
-                RoundedWarningIcon(
-                    color = TextSecondary,
-                    modifier = Modifier.size(17.dp)
+                LucideIcon(
+                    name = "triangle-alert",
+                    contentDescription = "预警",
+                    tint = TextSecondary,
+                    size = 17.dp
                 )
             }
             Spacer(modifier = Modifier.width(4.dp))
@@ -136,45 +133,5 @@ internal fun AlertBanner(alerts: List<AlertItem>, onClick: (Int) -> Unit = {}) {
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun RoundedWarningIcon(
-    color: Color,
-    modifier: Modifier = Modifier
-) {
-    Canvas(modifier = modifier) {
-        val width = size.width
-        val height = size.height
-        val strokeWidth = 1.65.dp.toPx()
-        val triangle = Path().apply {
-            moveTo(width * 0.50f, height * 0.12f)
-            lineTo(width * 0.90f, height * 0.84f)
-            lineTo(width * 0.10f, height * 0.84f)
-            close()
-        }
-
-        drawPath(
-            path = triangle,
-            color = color,
-            style = Stroke(
-                width = strokeWidth,
-                cap = StrokeCap.Round,
-                join = StrokeJoin.Round
-            )
-        )
-        drawLine(
-            color = color,
-            start = Offset(width * 0.50f, height * 0.36f),
-            end = Offset(width * 0.50f, height * 0.58f),
-            strokeWidth = strokeWidth,
-            cap = StrokeCap.Round
-        )
-        drawCircle(
-            color = color,
-            radius = strokeWidth * 0.55f,
-            center = Offset(width * 0.50f, height * 0.70f)
-        )
     }
 }

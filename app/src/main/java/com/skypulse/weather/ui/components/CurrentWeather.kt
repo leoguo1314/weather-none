@@ -12,9 +12,6 @@ import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material3.*
 import com.skypulse.weather.viewmodel.RefreshPhase
 import androidx.compose.runtime.*
@@ -84,11 +81,11 @@ fun LocationHeader(
                         enter = fadeIn(),
                         exit = fadeOut()
                     ) {
-                        Icon(
-                            imageVector = Icons.Outlined.LocationOn,
+                        LucideIcon(
+                            name = "map-pin",
                             contentDescription = "校正位置",
                             tint = TextSecondary,
-                            modifier = Modifier.size(22.dp)
+                            size = 18.dp
                         )
                     }
                 }
@@ -134,10 +131,10 @@ fun LocationHeader(
                                     color = TextSecondary
                                 )
                             } else {
-                                Icon(
-                                    imageVector = Icons.Outlined.CheckCircle,
+                                LucideIcon(
+                                    name = "circle-check",
                                     contentDescription = null,
-                                    modifier = Modifier.size(14.dp),
+                                    size = 14.dp,
                                     tint = TextSecondary
                                 )
                             }

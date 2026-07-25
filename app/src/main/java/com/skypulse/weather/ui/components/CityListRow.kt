@@ -10,9 +10,6 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -77,11 +74,11 @@ fun SwipeableCityListRow(
                 onClick = { onDelete(); offsetX = 0f },
                 modifier = Modifier.padding(end = 16.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Outlined.Delete,
+                LucideIcon(
+                    name = "trash-2",
                     contentDescription = "删除",
                     tint = Color.White,
-                    modifier = Modifier.size(24.dp)
+                    size = 24.dp
                 )
             }
         }
@@ -133,11 +130,11 @@ fun SwipeableCityListRow(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     if (isCurrentLocation) {
-                        Icon(
-                            imageVector = Icons.Outlined.LocationOn,
+                        LucideIcon(
+                            name = "map-pin",
                             contentDescription = null,
                             tint = Color.White.copy(alpha = 0.85f),
-                            modifier = Modifier.size(16.dp)
+                            size = 16.dp
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                     }

@@ -13,11 +13,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.Autorenew
-import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material.icons.outlined.Lock
+import com.skypulse.weather.ui.components.LucideIcon
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -118,8 +114,8 @@ fun SettingsScreen(
                 title = { Text("设置", color = IosTextPrimary, fontWeight = FontWeight.SemiBold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                        LucideIcon(
+                            name = "arrow-left",
                             contentDescription = "返回",
                             tint = IosBackArrow
                         )
@@ -155,6 +151,14 @@ fun SettingsScreen(
                                 append("解锁所有高级功能")
                             },
                             titleColor = IosAccentBlue,
+                            trailing = {
+                                LucideIcon(
+                                    name = "key-round",
+                                    contentDescription = null,
+                                    size = 20.dp,
+                                    tint = IosAccentBlue
+                                )
+                            },
                             onClick = { showMembershipDialog = true }
                         )
                     }
@@ -272,10 +276,10 @@ fun SettingsScreen(
                         title = "免广告",
                         titleColor = IosTextPrimary,
                         trailing = {
-                            Icon(
-                                imageVector = Icons.Outlined.Check,
+                            LucideIcon(
+                                name = "check",
                                 contentDescription = "已解锁",
-                                modifier = Modifier.size(18.dp),
+                                size = 18.dp,
                                 tint = IosAccentGreen
                             )
                         },
@@ -287,10 +291,10 @@ fun SettingsScreen(
                         title = "天气动效",
                         titleColor = IosTextPrimary,
                         trailing = {
-                            Icon(
-                                imageVector = Icons.Outlined.Check,
+                            LucideIcon(
+                                name = "check",
                                 contentDescription = "已解锁",
-                                modifier = Modifier.size(18.dp),
+                                size = 18.dp,
                                 tint = IosAccentGreen
                             )
                         },
@@ -303,10 +307,10 @@ fun SettingsScreen(
                             title = "多城市天气",
                             titleColor = IosTextSecondary,
                             trailing = {
-                                Icon(
-                                    imageVector = Icons.Outlined.Lock,
+                                LucideIcon(
+                                    name = "lock",
                                     contentDescription = "会员功能",
-                                    modifier = Modifier.size(18.dp),
+                                    size = 18.dp,
                                     tint = IosTextSecondary.copy(alpha = 0.5f)
                                 )
                             },
@@ -317,10 +321,10 @@ fun SettingsScreen(
                             title = "街道/小区级定位",
                             titleColor = IosTextSecondary,
                             trailing = {
-                                Icon(
-                                    imageVector = Icons.Outlined.Lock,
+                                LucideIcon(
+                                    name = "lock",
                                     contentDescription = "会员功能",
-                                    modifier = Modifier.size(18.dp),
+                                    size = 18.dp,
                                     tint = IosTextSecondary.copy(alpha = 0.5f)
                                 )
                             },
@@ -331,10 +335,10 @@ fun SettingsScreen(
                             title = "15日预报",
                             titleColor = IosTextSecondary,
                             trailing = {
-                                Icon(
-                                    imageVector = Icons.Outlined.Lock,
+                                LucideIcon(
+                                    name = "lock",
                                     contentDescription = "会员功能",
-                                    modifier = Modifier.size(18.dp),
+                                    size = 18.dp,
                                     tint = IosTextSecondary.copy(alpha = 0.5f)
                                 )
                             },
@@ -345,10 +349,10 @@ fun SettingsScreen(
                             title = "AI天气校准",
                             titleColor = IosTextSecondary,
                             trailing = {
-                                Icon(
-                                    imageVector = Icons.Outlined.Lock,
+                                LucideIcon(
+                                    name = "lock",
                                     contentDescription = "会员功能",
-                                    modifier = Modifier.size(18.dp),
+                                    size = 18.dp,
                                     tint = IosTextSecondary.copy(alpha = 0.5f)
                                 )
                             },
@@ -359,10 +363,10 @@ fun SettingsScreen(
                             title = "多功能小组件",
                             titleColor = IosTextSecondary,
                             trailing = {
-                                Icon(
-                                    imageVector = Icons.Outlined.Lock,
+                                LucideIcon(
+                                    name = "lock",
                                     contentDescription = "会员功能",
-                                    modifier = Modifier.size(18.dp),
+                                    size = 18.dp,
                                     tint = IosTextSecondary.copy(alpha = 0.5f)
                                 )
                             },
@@ -374,10 +378,10 @@ fun SettingsScreen(
                             title = "多城市天气",
                             titleColor = IosTextPrimary,
                             trailing = {
-                                Icon(
-                                    imageVector = Icons.Outlined.Check,
+                                LucideIcon(
+                                    name = "check",
                                     contentDescription = "已解锁",
-                                    modifier = Modifier.size(18.dp),
+                                    size = 18.dp,
                                     tint = IosAccentGreen
                                 )
                             },
@@ -388,10 +392,10 @@ fun SettingsScreen(
                             title = "街道/小区级定位",
                             titleColor = IosTextPrimary,
                             trailing = {
-                                Icon(
-                                    imageVector = Icons.Outlined.Check,
+                                LucideIcon(
+                                    name = "check",
                                     contentDescription = "已解锁",
-                                    modifier = Modifier.size(18.dp),
+                                    size = 18.dp,
                                     tint = IosAccentGreen
                                 )
                             },
@@ -402,10 +406,10 @@ fun SettingsScreen(
                             title = "15日预报",
                             titleColor = IosTextPrimary,
                             trailing = {
-                                Icon(
-                                    imageVector = Icons.Outlined.Check,
+                                LucideIcon(
+                                    name = "check",
                                     contentDescription = "已解锁",
-                                    modifier = Modifier.size(18.dp),
+                                    size = 18.dp,
                                     tint = IosAccentGreen
                                 )
                             },
@@ -416,10 +420,10 @@ fun SettingsScreen(
                             title = "AI天气校准",
                             titleColor = IosTextPrimary,
                             trailing = {
-                                Icon(
-                                    imageVector = Icons.Outlined.Check,
+                                LucideIcon(
+                                    name = "check",
                                     contentDescription = "已解锁",
-                                    modifier = Modifier.size(18.dp),
+                                    size = 18.dp,
                                     tint = IosAccentGreen
                                 )
                             },
@@ -430,10 +434,10 @@ fun SettingsScreen(
                             title = "多功能小组件",
                             titleColor = IosTextPrimary,
                             trailing = {
-                                Icon(
-                                    imageVector = Icons.Outlined.Check,
+                                LucideIcon(
+                                    name = "check",
                                     contentDescription = "已解锁",
-                                    modifier = Modifier.size(18.dp),
+                                    size = 18.dp,
                                     tint = IosAccentGreen
                                 )
                             },
@@ -483,13 +487,12 @@ fun SettingsScreen(
                                 .padding(horizontal = 20.dp, vertical = 14.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(
-                                imageVector = Icons.Outlined.Autorenew,
+                            LucideIcon(
+                                name = "refresh-cw",
                                 contentDescription = null,
-                                modifier = Modifier
-                                    .size(20.dp)
-                                    .rotate(rotation),
-                                tint = IosTextSecondary
+                                size = 20.dp,
+                                tint = IosTextSecondary,
+                                modifier = Modifier.rotate(rotation)
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             Text(
@@ -588,10 +591,10 @@ private fun ToggleItem(
             modifier = Modifier.weight(1f)
         )
         if (locked) {
-            Icon(
-                imageVector = Icons.Outlined.Lock,
+            LucideIcon(
+                name = "lock",
                 contentDescription = "会员功能",
-                modifier = Modifier.size(18.dp),
+                size = 18.dp,
                 tint = IosTextSecondary.copy(alpha = 0.5f)
             )
             Spacer(modifier = Modifier.width(8.dp))

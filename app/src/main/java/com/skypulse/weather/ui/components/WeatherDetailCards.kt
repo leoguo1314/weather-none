@@ -3,14 +3,11 @@ package com.skypulse.weather.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -23,7 +20,7 @@ private data class DetailItem(
     val label: String,
     val value: String,
     val unit: String,
-    val icon: ImageVector
+    val iconName: String
 )
 
 @Composable
@@ -52,12 +49,12 @@ fun WeatherDetailCards(
     val windLevelNum = windSpeedLevel.replace("\u7ea7", "")
 
     val items = listOf(
-        DetailItem("\u7d2b\u5916\u7ebf", uvIndex, uvDesc, Icons.Outlined.WbSunny),
-        DetailItem("\u4f53\u611f\u6e29\u5ea6", feelsLike, "", Icons.Outlined.Thermostat),
-        DetailItem("\u6e7f\u5ea6", humidity, "", Icons.Outlined.WaterDrop),
-        DetailItem(windDir, windLevelNum, "\u7ea7", Icons.Outlined.Air),
-        DetailItem("\u6c14\u538b", pressureValue, pressureUnit, Icons.Outlined.Speed),
-        DetailItem("\u80fd\u89c1\u5ea6", visValue, visUnit, Icons.Outlined.Visibility)
+        DetailItem("\u7d2b\u5916\u7ebf", uvIndex, uvDesc, "sun"),
+        DetailItem("\u4f53\u611f\u6e29\u5ea6", feelsLike, "", "thermometer"),
+        DetailItem("\u6e7f\u5ea6", humidity, "", "droplet"),
+        DetailItem(windDir, windLevelNum, "\u7ea7", "wind"),
+        DetailItem("\u6c14\u538b", pressureValue, pressureUnit, "gauge"),
+        DetailItem("\u80fd\u89c1\u5ea6", visValue, visUnit, "eye")
     )
 
     Column(
@@ -71,7 +68,7 @@ fun WeatherDetailCards(
         ) {
             items.take(3).forEach { item ->
                 DetailSquareCard(
-                    icon = item.icon,
+                    iconName = item.iconName,
                     label = item.label,
                     value = item.value,
                     unit = item.unit,
@@ -86,7 +83,7 @@ fun WeatherDetailCards(
         ) {
             items.drop(3).forEach { item ->
                 DetailSquareCard(
-                    icon = item.icon,
+                    iconName = item.iconName,
                     label = item.label,
                     value = item.value,
                     unit = item.unit,
@@ -99,7 +96,7 @@ fun WeatherDetailCards(
 
 @Composable
 private fun DetailSquareCard(
-    icon: ImageVector,
+    iconName: String,
     label: String,
     value: String,
     unit: String = "",
@@ -114,11 +111,11 @@ private fun DetailSquareCard(
                 .padding(horizontal = 12.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.Center
         ) {
-            Icon(
-                imageVector = icon,
+            LucideIcon(
+                name = iconName,
                 contentDescription = label,
                 tint = TextSecondary,
-                modifier = Modifier.size(24.dp)
+                size = 24.dp
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(

@@ -2,10 +2,6 @@ package com.skypulse.weather.ui.components
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.DarkMode
-import androidx.compose.material.icons.outlined.WbSunny
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -16,14 +12,14 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.translate
-import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.skypulse.weather.model.DailyAstro
-import com.skypulse.weather.ui.theme.LocalWeatherTheme
 import com.skypulse.weather.ui.theme.TextPrimary
 import com.skypulse.weather.ui.theme.TextSecondary
 import java.util.Calendar
@@ -135,11 +131,11 @@ fun SunriseSunsetCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Icon(
-                        imageVector = if (cardState.showMoon) Icons.Outlined.DarkMode else Icons.Outlined.WbSunny,
+                    LucideIcon(
+                        name = if (cardState.leftLabel == "日出") "sunrise" else "sunset",
                         contentDescription = null,
                         tint = TextSecondary,
-                        modifier = Modifier.size(20.dp)
+                        size = 20.dp
                     )
                     Text(
                         text = cardState.leftLabel,
@@ -157,11 +153,11 @@ fun SunriseSunsetCard(
                         style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.5.sp),
                         color = TextSecondary
                     )
-                    Icon(
-                        imageVector = if (cardState.showMoon) Icons.Outlined.WbSunny else Icons.Outlined.DarkMode,
+                    LucideIcon(
+                        name = if (cardState.rightLabel == "日出") "sunrise" else "sunset",
                         contentDescription = null,
                         tint = TextSecondary,
-                        modifier = Modifier.size(20.dp)
+                        size = 20.dp
                     )
                 }
             }
@@ -230,8 +226,14 @@ private fun HorizontalSunProgress(
     modifier: Modifier = Modifier
 ) {
     val clampedProgress = progress.coerceIn(0f, 1f)
-    val sunPainter = rememberVectorPainter(image = Icons.Outlined.WbSunny)
-    val moonPainter = rememberVectorPainter(image = Icons.Outlined.DarkMode)
+    val context = LocalContext.current
+    val density = LocalDensity.current
+    val iconSizePx = remember(density) { with(density) { 18.dp.roundToPx() } }
+    val iconName = if (showMoon) "moon" else "sun"
+    val iconBitmap = remember(context, iconName, iconSizePx) {
+        LucideSvgRenderer.renderBitmap(context, iconName, iconSizePx, "#FFFFFF")
+            ?.asImageBitmap()
+    }
 
     Canvas(modifier = modifier) {
         val barY = size.height / 2
@@ -264,8 +266,8 @@ private fun HorizontalSunProgress(
             )
         }
 
-        // Vector Icon Size
-        val iconSizePx = 18.dp.toPx()
+        // Icon draw
+        val drawSize = Size(iconSizePx.toFloat(), iconSizePx.toFloat())
         val iconOffset = Offset(indicatorX - iconSizePx / 2, barY - iconSizePx / 2)
 
         // Outer glow
@@ -275,12 +277,11 @@ private fun HorizontalSunProgress(
             center = Offset(indicatorX, barY)
         )
 
-        // Draw the vector icon (tilted or default)
-        val painter = if (showMoon) moonPainter else sunPainter
-        translate(left = iconOffset.x, top = iconOffset.y) {
-            with(painter) {
-                draw(
-                    size = Size(iconSizePx, iconSizePx),
+        // Draw the icon bitmap
+        if (iconBitmap != null) {
+            translate(left = iconOffset.x, top = iconOffset.y) {
+                drawImage(
+                    image = iconBitmap,
                     colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(Color.White)
                 )
             }

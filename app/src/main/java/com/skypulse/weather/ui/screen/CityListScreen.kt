@@ -9,10 +9,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.Search
+import com.skypulse.weather.ui.components.LucideIcon
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -63,8 +60,8 @@ fun CityListScreen(
                     title = { Text("城市管理", color = IosTextPrimary) },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                            LucideIcon(
+                                name = "arrow-left",
                                 contentDescription = "返回",
                                 tint = IosBackArrow
                             )
@@ -106,11 +103,11 @@ fun CityListScreen(
                                 .padding(horizontal = 12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(
-                                imageVector = Icons.Outlined.Search,
+                            LucideIcon(
+                                name = "search",
                                 contentDescription = null,
                                 tint = IosTextSecondary,
-                                modifier = Modifier.size(22.dp)
+                                size = 22.dp
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Box(modifier = Modifier.weight(1f)) {
@@ -132,11 +129,11 @@ fun CityListScreen(
                                     },
                                     modifier = Modifier.size(34.dp)
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Outlined.Close,
+                                    LucideIcon(
+                                        name = "x",
                                         contentDescription = "清除",
                                         tint = IosTextSecondary,
-                                        modifier = Modifier.size(24.dp)
+                                        size = 24.dp
                                     )
                                 }
                             }
