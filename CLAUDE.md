@@ -31,7 +31,6 @@
 - **GitHub Release 标题**: GitHub 发版标题只写版本号，例如 v3.0.0，不要有多余的文字
 - **GitHub Release UTF-8 编码**: 创建或更新 GitHub Release 时，必须将 JSON body 手动转换为 UTF-8 字节数组后再发送，避免 PowerShell 默认使用 GBK 编码导致中文乱码。正确示例：$bytes = [System.Text.Encoding]::UTF8.GetBytes(); Invoke-RestMethod ... -Body  -ContentType "application/json; charset=utf-8"
 - **GitHub 版本清理**: 每次 GitHub 发版完成后，必须清理旧版本，只保留最近 7 个版本（包括 releases 和 tags）
-- 发版前必须清理 build.gradle.kts 和 CHANGELOG.md 的 UTF-8 BOM
 
 ## Git 操作规范
 - **git操作**: 除非用户主动要求提交/推送（必须每次对话明确提出发版-不能根据上下文内容自己推测），否则不要提交/推送代码到远程仓库

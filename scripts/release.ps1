@@ -1,19 +1,13 @@
 <#
 .SYNOPSIS
     Release: bump version -> build release APK -> rename APK -> upload to cloud clipboard
-.PARAMETER Entry
-    Optional changelog entry.
 .EXAMPLE
-    .\scripts\release.ps1 -Entry "Fix city list crash"
+    .\scripts\release.ps1
 #>
-param(
-    [string]$Entry = ""
-)
 
 $ErrorActionPreference = "Stop"
 $projectRoot = Join-Path $PSScriptRoot ".."
 $buildFile   = Join-Path $projectRoot "app\build.gradle.kts"
-$changelog   = Join-Path $projectRoot "CHANGELOG.md"
 
 # Project constants
 $env:JAVA_HOME   = "C:\Program Files\Android\Android Studio\jbr"
@@ -64,27 +58,7 @@ Set-Utf8NoBom -Path $buildFile -Value $content
 
 Write-Host "[1/4] Version: $oldVersion -> $newVersion (code $code)" -ForegroundColor Cyan
 
-# 3. Update CHANGELOG
-if ($Entry -and (Test-Path $changelog)) {
-    $date    = Get-Date -Format "yyyy-MM-dd"
-    $section = "`n## [$newVersion] - $date`n`n- $Entry`n"
-    $clText  = Get-Content $changelog -Raw -Encoding UTF8
-    $idx     = $clText.IndexOf("---")
-    if ($idx -ge 0) {
-        $next = $clText.IndexOf("---", $idx + 3)
-        if ($next -ge 0) {
-            $clText = $clText.Insert($next + 3, $section)
-        } else {
-            $clText += $section
-        }
-    } else {
-        $clText += $section
-    }
-    Set-Utf8NoBom -Path $changelog -Value $clText
-    Write-Host "  CHANGELOG.md updated" -ForegroundColor DarkGray
-}
-
-# 4. Build release
+# 3. Build release
 Write-Host "[2/4] Running assembleRelease ..." -ForegroundColor Cyan
 Set-Location $projectRoot
 $output = & cmd /c "`"$gradleWrapper`" assembleRelease 2>&1" | Out-String
@@ -103,7 +77,7 @@ if ($gradleExit -ne 0) {
 }
 Write-Host "  Build succeeded" -ForegroundColor Green
 
-# 5. Rename APK
+# 4. Rename APK
 $apkDst = Join-Path $releaseApkDir "skypulse-v$newVersion.apk"
 if (Test-Path $releaseApkSrc) {
     Move-Item -Path $releaseApkSrc -Destination $apkDst -Force
@@ -113,7 +87,7 @@ if (Test-Path $releaseApkSrc) {
     exit 1
 }
 
-# 6. Upload to cloud clipboard
+# 5. Upload to cloud clipboard
 Write-Host "[4/4] Uploading to cloud clipboard ..." -ForegroundColor Cyan
 try {
     $uploadResult = & cmd /c "curl.exe -s -X POST -H `"x-room-password: 888`" -F `"file=@$apkDst`" `"$uploadUrl`" 2>&1"
