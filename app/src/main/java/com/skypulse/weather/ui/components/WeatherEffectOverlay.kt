@@ -24,6 +24,10 @@ import kotlin.random.Random
 /**
  * 天气效果覆盖层
  * 在背景上叠加逼真的粒子动画
+ *
+ * 优化点：
+ * 1. 性能优化 - 帧率控制，减少不必要的绘制
+ * 2. 强度区分 - 雨/雪等天气根据强度调整视觉效果
  */
 @Composable
 fun WeatherEffectOverlay(
@@ -31,51 +35,79 @@ fun WeatherEffectOverlay(
     isDay: Boolean,
     modifier: Modifier = Modifier
 ) {
+    // 优化1: 帧率控制 - 60fps足够流畅，减少不必要的绘制
+    val frameRateLimiter = remember { FrameRateLimiter(targetFps = 60) }
+
+    // 优化2: 解析天气强度
+    val intensity = remember(skycon) { parseWeatherIntensity(skycon) }
+
+    // 直接渲染天气效果，不做过渡动画（天气效果是半透明粒子，直接切换不会有明显突兀）
+    WeatherEffectContent(
+        skycon = skycon,
+        isDay = isDay,
+        intensity = intensity,
+        frameRateLimiter = frameRateLimiter,
+        modifier = modifier
+    )
+}
+
+/**
+ * 天气效果内容渲染（内部函数）
+ * 保持原有逻辑不变，添加强度参数支持
+ */
+@Composable
+private fun WeatherEffectContent(
+    skycon: String?,
+    isDay: Boolean,
+    intensity: WeatherIntensity,
+    frameRateLimiter: FrameRateLimiter,
+    modifier: Modifier = Modifier
+) {
     // 根据天气条件选择效果
     when {
         skycon == null || skycon.contains("CLEAR") -> {
             if (isDay) {
-                SunnyDayEffect(modifier)
+                SunnyDayEffect(modifier, frameRateLimiter)
             } else {
-                ClearNightEffect(modifier)
+                ClearNightEffect(modifier, frameRateLimiter)
             }
         }
         skycon.contains("PARTLY_CLOUDY") -> {
             if (isDay) {
-                PartlyCloudyDayEffect(modifier)
+                PartlyCloudyDayEffect(modifier, frameRateLimiter)
             } else {
-                ClearNightEffect(modifier)
+                ClearNightEffect(modifier, frameRateLimiter)
             }
         }
         skycon.contains("CLOUDY") -> {
-            CloudyEffect(modifier)
+            CloudyEffect(modifier, frameRateLimiter)
         }
         // THUNDER_SHOWER: 雷阵雨 - 雨+闪电
         skycon == "THUNDER_SHOWER" -> {
-            ThunderShowerEffect(modifier)
+            ThunderShowerEffect(modifier, intensity, frameRateLimiter)
         }
         // STORM_SNOW: 暴雪 - 必须在 STORM_RAIN 之前判断
         skycon == "STORM_SNOW" -> {
-            SnowEffect(modifier)
+            SnowEffect(modifier, intensity, frameRateLimiter)
         }
         // SLEET: 雨夹雪 - 雨+雪混合
         skycon == "SLEET" -> {
-            SleetEffect(modifier)
+            SleetEffect(modifier, intensity, frameRateLimiter)
         }
         // RAIN 相关: LIGHT_RAIN, MODERATE_RAIN, HEAVY_RAIN, STORM_RAIN
         skycon.contains("RAIN") -> {
-            RainEffect(modifier)
+            RainEffect(modifier, intensity, frameRateLimiter)
         }
         // SNOW 相关: LIGHT_SNOW, MODERATE_SNOW, HEAVY_SNOW
         skycon.contains("SNOW") -> {
-            SnowEffect(modifier)
+            SnowEffect(modifier, intensity, frameRateLimiter)
         }
         // 霾/雾/浮尘/沙尘
         skycon.contains("HAZE") || skycon == "FOG" || skycon == "DUST" || skycon == "SAND" -> {
-            FogEffect(modifier)
+            FogEffect(modifier, frameRateLimiter)
         }
         skycon == "WIND" -> {
-            WindEffect(modifier)
+            WindEffect(modifier, frameRateLimiter)
         }
     }
 }
@@ -84,17 +116,23 @@ fun WeatherEffectOverlay(
  * 晴天效果 - 阳光光束 + 光线射线 + 微小光点
  */
 @Composable
-private fun SunnyDayEffect(modifier: Modifier) {
+private fun SunnyDayEffect(
+    modifier: Modifier,
+    frameRateLimiter: FrameRateLimiter = FrameRateLimiter()
+) {
     val sunBeams = remember { generateSunBeams() }
     val lightRays = remember { generateLightRays() }
     val floatingMotes = remember { generateFloatingMotes() }
 
-    // 粒子位置动画
+    // 粒子位置动画（带帧率控制）
     var animationTime by remember { mutableStateOf(0f) }
     LaunchedEffect(Unit) {
         while (isActive) {
             withFrameMillis { frameTime ->
-                animationTime = frameTime / 1000f
+                // 优化: 帧率控制
+                if (frameRateLimiter.shouldRender(frameTime)) {
+                    animationTime = frameTime / 1000f
+                }
             }
         }
     }
@@ -228,7 +266,10 @@ private fun SunnyDayEffect(modifier: Modifier) {
  * 多云白天效果 - 阳光+云朵
  */
 @Composable
-private fun PartlyCloudyDayEffect(modifier: Modifier) {
+private fun PartlyCloudyDayEffect(
+    modifier: Modifier,
+    frameRateLimiter: FrameRateLimiter = FrameRateLimiter()
+) {
     val sunBeams = remember { generateSunBeams() }
     val lightRays = remember { generateLightRays() }
     val cloudsMid = remember { generateCloudsMid() }
@@ -238,7 +279,9 @@ private fun PartlyCloudyDayEffect(modifier: Modifier) {
     LaunchedEffect(Unit) {
         while (isActive) {
             withFrameMillis { frameTime ->
-                animationTime = frameTime / 1000f
+                if (frameRateLimiter.shouldRender(frameTime)) {
+                    animationTime = frameTime / 1000f
+                }
             }
         }
     }
@@ -313,14 +356,19 @@ private fun PartlyCloudyDayEffect(modifier: Modifier) {
  * 晴夜效果 - 星星闪烁
  */
 @Composable
-private fun ClearNightEffect(modifier: Modifier) {
+private fun ClearNightEffect(
+    modifier: Modifier,
+    frameRateLimiter: FrameRateLimiter = FrameRateLimiter()
+) {
     val stars = remember { generateStars() }
     var animationTime by remember { mutableStateOf(0f) }
 
     LaunchedEffect(Unit) {
         while (isActive) {
             withFrameMillis { frameTime ->
-                animationTime = frameTime / 1000f
+                if (frameRateLimiter.shouldRender(frameTime)) {
+                    animationTime = frameTime / 1000f
+                }
             }
         }
     }
@@ -375,90 +423,165 @@ private fun ClearNightEffect(modifier: Modifier) {
 }
 
 /**
- * 雨天效果 - 前景/背景雨层 + 底部水雾
+ * 雨天效果 - 4层雨效果 + 底部水雾
+ * 支持天气强度调整（小雨、中雨、大雨、暴雨）
+ *
+ * 4层结构：
+ * 1. 远景层（far）：小、淡、慢，模拟远处的雨
+ * 2. 中远景层（mid-far）：中等大小和透明度
+ * 3. 中近景层（mid-near）：较大、较明显
+ * 4. 近景层（near）：最大、最明显、最快
  */
 @Composable
-private fun RainEffect(modifier: Modifier) {
-    val raindropsBg = remember { generateRaindropsBg() }
-    val raindropsFg = remember { generateRaindropsFg() }
+private fun RainEffect(
+    modifier: Modifier,
+    intensity: WeatherIntensity = WeatherIntensity(),
+    frameRateLimiter: FrameRateLimiter = FrameRateLimiter()
+) {
+    // 根据强度动态调整粒子数量（4层）
+    val farCount = (30 * intensity.particleCount).toInt().coerceIn(10, 60)
+    val midFarCount = (35 * intensity.particleCount).toInt().coerceIn(15, 70)
+    val midNearCount = (30 * intensity.particleCount).toInt().coerceIn(10, 60)
+    val nearCount = (25 * intensity.particleCount).toInt().coerceIn(10, 50)
+
+    // 4层雨滴数据
+    val raindropsFar = remember(intensity.particleCount) { generateRainLayer(farCount, isFar = true) }
+    val raindropsMidFar = remember(intensity.particleCount) { generateRainLayer(midFarCount, isFar = false) }
+    val raindropsMidNear = remember(intensity.particleCount) { generateRainLayer(midNearCount, isFar = false) }
+    val raindropsNear = remember(intensity.particleCount) { generateRainLayer(nearCount, isFar = false) }
     val rainMist = remember { generateRainMist() }
+
     var animationTime by remember { mutableStateOf(0f) }
     var lastFrameTime by remember { mutableStateOf(0L) }
 
     LaunchedEffect(Unit) {
         while (isActive) {
             withFrameMillis { frameTime ->
-                if (lastFrameTime > 0) {
-                    val delta = (frameTime - lastFrameTime) / 1000f
-                    animationTime += delta
+                if (frameRateLimiter.shouldRender(frameTime)) {
+                    if (lastFrameTime > 0) {
+                        val delta = (frameTime - lastFrameTime) / 1000f
+                        animationTime += delta
+                    }
+                    lastFrameTime = frameTime
                 }
-                lastFrameTime = frameTime
             }
         }
     }
 
     Canvas(modifier = modifier.fillMaxSize()) {
-        // 1. 背景雨层（小、淡、慢）
-        raindropsBg.forEach { drop ->
-            val speedFactor = 120f
-            val x = ((drop.x + animationTime * drop.speedX * 25) % (size.width + 80f)) - 40f
-            val y = ((drop.y + animationTime * drop.speedY * speedFactor) % (size.height + drop.length)) - drop.length
+        val speedMultiplier = intensity.speed
+        val alphaMultiplier = intensity.alpha
+        val thicknessMultiplier = intensity.thickness
 
-            val endX = x + drop.speedX * drop.length * 0.12f
-            val endY = y + drop.length
+        // ============ 1. 远景层（far）- 小、淡、慢 ============
+        raindropsFar.forEach { drop ->
+            val speedFactor = 80f * speedMultiplier
+            val x = ((drop.x + animationTime * drop.speedX * 15) % (size.width + 60f)) - 30f
+            val y = ((drop.y + animationTime * drop.speedY * speedFactor) % (size.height + drop.length)) - drop.length
 
             drawLine(
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        Color.White.copy(alpha = drop.alpha * 0.05f),
-                        Color.White.copy(alpha = drop.alpha * 0.3f),
-                        Color.White.copy(alpha = drop.alpha * 0.6f)
+                        Color.White.copy(alpha = drop.alpha * alphaMultiplier * 0.03f),
+                        Color.White.copy(alpha = drop.alpha * alphaMultiplier * 0.15f),
+                        Color.White.copy(alpha = drop.alpha * alphaMultiplier * 0.3f)
                     ),
                     startY = y,
-                    endY = endY
+                    endY = y + drop.length
                 ),
                 start = Offset(x, y),
-                end = Offset(endX, endY),
-                strokeWidth = drop.thickness * 0.6f,
+                end = Offset(x, y + drop.length),
+                strokeWidth = drop.thickness * thicknessMultiplier * 0.4f,
                 cap = StrokeCap.Round
             )
         }
 
-        // 2. 前景雨层（大、明显、快）
-        raindropsFg.forEach { drop ->
-            val speedFactor = 200f
-            val x = ((drop.x + animationTime * drop.speedX * 40) % (size.width + 120f)) - 60f
+        // ============ 2. 中远景层（mid-far） ============
+        raindropsMidFar.forEach { drop ->
+            val speedFactor = 120f * speedMultiplier
+            val x = ((drop.x + animationTime * drop.speedX * 25) % (size.width + 80f)) - 40f
             val y = ((drop.y + animationTime * drop.speedY * speedFactor) % (size.height + drop.length)) - drop.length
 
-            val endX = x + drop.speedX * drop.length * 0.18f
-            val endY = y + drop.length
-
-            // 雨滴主体
             drawLine(
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        Color.White.copy(alpha = drop.alpha * 0.08f),
-                        Color.White.copy(alpha = drop.alpha * 0.5f),
-                        Color.White.copy(alpha = drop.alpha)
+                        Color.White.copy(alpha = drop.alpha * alphaMultiplier * 0.05f),
+                        Color.White.copy(alpha = drop.alpha * alphaMultiplier * 0.25f),
+                        Color.White.copy(alpha = drop.alpha * alphaMultiplier * 0.5f)
                     ),
                     startY = y,
-                    endY = endY
+                    endY = y + drop.length
                 ),
                 start = Offset(x, y),
-                end = Offset(endX, endY),
-                strokeWidth = drop.thickness,
+                end = Offset(x, y + drop.length),
+                strokeWidth = drop.thickness * thicknessMultiplier * 0.6f,
+                cap = StrokeCap.Round
+            )
+        }
+
+        // ============ 3. 中近景层（mid-near） ============
+        raindropsMidNear.forEach { drop ->
+            val speedFactor = 170f * speedMultiplier
+            val x = ((drop.x + animationTime * drop.speedX * 35) % (size.width + 100f)) - 50f
+            val y = ((drop.y + animationTime * drop.speedY * speedFactor) % (size.height + drop.length)) - drop.length
+
+            drawLine(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = drop.alpha * alphaMultiplier * 0.06f),
+                        Color.White.copy(alpha = drop.alpha * alphaMultiplier * 0.35f),
+                        Color.White.copy(alpha = drop.alpha * alphaMultiplier * 0.7f)
+                    ),
+                    startY = y,
+                    endY = y + drop.length
+                ),
+                start = Offset(x, y),
+                end = Offset(x, y + drop.length),
+                strokeWidth = drop.thickness * thicknessMultiplier * 0.8f,
                 cap = StrokeCap.Round
             )
 
             // 雨滴头部高光
             drawCircle(
-                color = Color.White.copy(alpha = drop.alpha * 0.7f),
-                radius = drop.thickness * 0.7f,
-                center = Offset(endX, endY)
+                color = Color.White.copy(alpha = drop.alpha * alphaMultiplier * 0.5f),
+                radius = drop.thickness * thicknessMultiplier * 0.5f,
+                center = Offset(x, y + drop.length)
             )
         }
 
-        // 3. 底部水雾效果
+        // ============ 4. 近景层（near）- 最大、最明显、最快 ============
+        raindropsNear.forEach { drop ->
+            val speedFactor = 230f * speedMultiplier
+            val x = ((drop.x + animationTime * drop.speedX * 45) % (size.width + 120f)) - 60f
+            val y = ((drop.y + animationTime * drop.speedY * speedFactor) % (size.height + drop.length)) - drop.length
+
+            // 雨滴主体
+            drawLine(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = drop.alpha * alphaMultiplier * 0.1f),
+                        Color.White.copy(alpha = drop.alpha * alphaMultiplier * 0.6f),
+                        Color.White.copy(alpha = drop.alpha * alphaMultiplier)
+                    ),
+                    startY = y,
+                    endY = y + drop.length
+                ),
+                start = Offset(x, y),
+                end = Offset(x, y + drop.length),
+                strokeWidth = drop.thickness * thicknessMultiplier,
+                cap = StrokeCap.Round
+            )
+
+            // 雨滴头部高光（更明显）
+            drawCircle(
+                color = Color.White.copy(alpha = drop.alpha * alphaMultiplier * 0.8f),
+                radius = drop.thickness * thicknessMultiplier * 0.8f,
+                center = Offset(x, y + drop.length)
+            )
+        }
+
+        // ============ 5. 底部水雾效果（暴雨时更明显） ============
+        val mistAlphaBoost = if (intensity.particleCount > 1.5f) 1.5f else 1f
         rainMist.forEach { mist ->
             val x = ((mist.x + animationTime * mist.speedX * 15) % (size.width + mist.size * 2)) - mist.size
             val y = size.height - mist.y - mist.size * 0.3f
@@ -466,9 +589,9 @@ private fun RainEffect(modifier: Modifier) {
             drawCircle(
                 brush = Brush.radialGradient(
                     colors = listOf(
-                        Color.White.copy(alpha = mist.alpha * 0.6f),
-                        Color.White.copy(alpha = mist.alpha * 0.3f),
-                        Color.White.copy(alpha = mist.alpha * 0.1f),
+                        Color.White.copy(alpha = mist.alpha * mistAlphaBoost * 0.6f),
+                        Color.White.copy(alpha = mist.alpha * mistAlphaBoost * 0.3f),
+                        Color.White.copy(alpha = mist.alpha * mistAlphaBoost * 0.1f),
                         Color.White.copy(alpha = 0f)
                     ),
                     center = Offset(x, y),
@@ -482,52 +605,110 @@ private fun RainEffect(modifier: Modifier) {
 }
 
 /**
+ * 生成单层雨滴数据
+ * @param count 粒子数量
+ * @param isFar 是否为远景层（更小、更淡）
+ */
+private fun generateRainLayer(count: Int, isFar: Boolean): List<Raindrop> {
+    return List(count) {
+        val speed = if (isFar) {
+            Random.nextFloat() * 4f + 6f  // 远景更慢
+        } else {
+            Random.nextFloat() * 8f + 12f
+        }
+        Raindrop(
+            x = Random.nextFloat() * 1200f,
+            y = Random.nextFloat() * 2000f,
+            alpha = if (isFar) {
+                Random.nextFloat() * 0.15f + 0.05f  // 远景更淡
+            } else {
+                Random.nextFloat() * 0.3f + 0.2f
+            },
+            size = if (isFar) {
+                Random.nextFloat() * 1f + 0.3f  // 远景更小
+            } else {
+                Random.nextFloat() * 1.5f + 0.5f
+            },
+            speedX = Random.nextFloat() * 1.5f - 0.3f,
+            speedY = speed,
+            length = if (isFar) {
+                Random.nextFloat() * 12f + 8f  // 远景更短
+            } else {
+                Random.nextFloat() * 22f + 15f
+            },
+            thickness = if (isFar) {
+                Random.nextFloat() * 0.6f + 0.3f  // 远景更细
+            } else {
+                Random.nextFloat() * 1.2f + 0.6f
+            }
+        )
+    }
+}
+
+/**
  * 雪天效果 - 雪花飘落
+ * 支持天气强度调整（小雪、中雪、大雪、暴雪）
  */
 @Composable
-private fun SnowEffect(modifier: Modifier) {
-    val snowflakes = remember { generateSnowflakes() }
+private fun SnowEffect(
+    modifier: Modifier,
+    intensity: WeatherIntensity = WeatherIntensity(),
+    frameRateLimiter: FrameRateLimiter = FrameRateLimiter()
+) {
+    // 根据强度动态调整粒子数量
+    val snowCount = (50 * intensity.particleCount).toInt().coerceIn(20, 120)
+    val snowflakes = remember(intensity.particleCount) { generateSnowflakes(snowCount) }
     var animationTime by remember { mutableStateOf(0f) }
     var lastFrameTime by remember { mutableStateOf(0L) }
 
     LaunchedEffect(Unit) {
         while (isActive) {
             withFrameMillis { frameTime ->
-                if (lastFrameTime > 0) {
-                    val delta = (frameTime - lastFrameTime) / 1000f
-                    animationTime += delta
+                if (frameRateLimiter.shouldRender(frameTime)) {
+                    if (lastFrameTime > 0) {
+                        val delta = (frameTime - lastFrameTime) / 1000f
+                        animationTime += delta
+                    }
+                    lastFrameTime = frameTime
                 }
-                lastFrameTime = frameTime
             }
         }
     }
 
     Canvas(modifier = modifier.fillMaxSize()) {
+        // 优化: 根据强度调整参数
+        val speedMultiplier = intensity.speed
+        val sizeMultiplier = intensity.size
+        val alphaMultiplier = intensity.alpha
+
         snowflakes.forEach { flake ->
             // 摇摆效果
             val wobble = sin(animationTime * flake.wobbleSpeed + flake.wobbleOffset)
             val x = flake.x + wobble * flake.wobbleAmplitude
-            val y = ((flake.y + animationTime * flake.speedY * 30) % (size.height + flake.size * 4)) - flake.size * 2
+            val y = ((flake.y + animationTime * flake.speedY * speedMultiplier * 30) % (size.height + flake.size * 4)) - flake.size * 2
+
+            val adjustedSize = flake.size * sizeMultiplier
+            val adjustedAlpha = flake.alpha * alphaMultiplier
 
             // 外层光晕
             drawCircle(
                 brush = Brush.radialGradient(
                     colors = listOf(
-                        Color.White.copy(alpha = flake.alpha * 0.4f),
-                        Color.White.copy(alpha = flake.alpha * 0.2f),
+                        Color.White.copy(alpha = adjustedAlpha * 0.4f),
+                        Color.White.copy(alpha = adjustedAlpha * 0.2f),
                         Color.White.copy(alpha = 0f)
                     ),
                     center = Offset(x, y),
-                    radius = flake.size * 2.5f
+                    radius = adjustedSize * 2.5f
                 ),
-                radius = flake.size * 2.5f,
+                radius = adjustedSize * 2.5f,
                 center = Offset(x, y)
             )
 
             // 内层实心
             drawCircle(
-                color = Color.White.copy(alpha = flake.alpha),
-                radius = flake.size * 0.6f,
+                color = Color.White.copy(alpha = adjustedAlpha),
+                radius = adjustedSize * 0.6f,
                 center = Offset(x, y)
             )
         }
@@ -538,7 +719,10 @@ private fun SnowEffect(modifier: Modifier) {
  * 多云效果 - 远近云层视差漂浮
  */
 @Composable
-private fun CloudyEffect(modifier: Modifier) {
+private fun CloudyEffect(
+    modifier: Modifier,
+    frameRateLimiter: FrameRateLimiter = FrameRateLimiter()
+) {
     val cloudsFar = remember { generateCloudsFar() }
     val cloudsMid = remember { generateCloudsMid() }
     val cloudsNear = remember { generateCloudsNear() }
@@ -548,11 +732,13 @@ private fun CloudyEffect(modifier: Modifier) {
     LaunchedEffect(Unit) {
         while (isActive) {
             withFrameMillis { frameTime ->
-                if (lastFrameTime > 0) {
-                    val delta = (frameTime - lastFrameTime) / 1000f
-                    animationTime += delta
+                if (frameRateLimiter.shouldRender(frameTime)) {
+                    if (lastFrameTime > 0) {
+                        val delta = (frameTime - lastFrameTime) / 1000f
+                        animationTime += delta
+                    }
+                    lastFrameTime = frameTime
                 }
-                lastFrameTime = frameTime
             }
         }
     }
@@ -675,7 +861,10 @@ private fun DrawScope.drawCloud(cloud: Cloud, animationTime: Float, speedFactor:
  * 雾天效果 - 浓雾弥漫
  */
 @Composable
-private fun FogEffect(modifier: Modifier) {
+private fun FogEffect(
+    modifier: Modifier,
+    frameRateLimiter: FrameRateLimiter = FrameRateLimiter()
+) {
     val fogLayers = remember { generateFogLayers() }
     var animationTime by remember { mutableStateOf(0f) }
     var lastFrameTime by remember { mutableStateOf(0L) }
@@ -683,11 +872,13 @@ private fun FogEffect(modifier: Modifier) {
     LaunchedEffect(Unit) {
         while (isActive) {
             withFrameMillis { frameTime ->
-                if (lastFrameTime > 0) {
-                    val delta = (frameTime - lastFrameTime) / 1000f
-                    animationTime += delta
+                if (frameRateLimiter.shouldRender(frameTime)) {
+                    if (lastFrameTime > 0) {
+                        val delta = (frameTime - lastFrameTime) / 1000f
+                        animationTime += delta
+                    }
+                    lastFrameTime = frameTime
                 }
-                lastFrameTime = frameTime
             }
         }
     }
@@ -721,7 +912,10 @@ private fun FogEffect(modifier: Modifier) {
  * 大风效果
  */
 @Composable
-private fun WindEffect(modifier: Modifier) {
+private fun WindEffect(
+    modifier: Modifier,
+    frameRateLimiter: FrameRateLimiter = FrameRateLimiter()
+) {
     val windParticles = remember { generateWindParticles() }
     var animationTime by remember { mutableStateOf(0f) }
     var lastFrameTime by remember { mutableStateOf(0L) }
@@ -729,11 +923,13 @@ private fun WindEffect(modifier: Modifier) {
     LaunchedEffect(Unit) {
         while (isActive) {
             withFrameMillis { frameTime ->
-                if (lastFrameTime > 0) {
-                    val delta = (frameTime - lastFrameTime) / 1000f
-                    animationTime += delta
+                if (frameRateLimiter.shouldRender(frameTime)) {
+                    if (lastFrameTime > 0) {
+                        val delta = (frameTime - lastFrameTime) / 1000f
+                        animationTime += delta
+                    }
+                    lastFrameTime = frameTime
                 }
-                lastFrameTime = frameTime
             }
         }
     }
@@ -767,10 +963,17 @@ private fun WindEffect(modifier: Modifier) {
 
 /**
  * 雷阵雨效果 - 雨滴 + 偶尔闪电
+ * 支持天气强度调整
  */
 @Composable
-private fun ThunderShowerEffect(modifier: Modifier) {
-    val raindrops = remember { generateRaindrops() }
+private fun ThunderShowerEffect(
+    modifier: Modifier,
+    intensity: WeatherIntensity = WeatherIntensity(),
+    frameRateLimiter: FrameRateLimiter = FrameRateLimiter()
+) {
+    // 根据强度动态调整粒子数量
+    val rainCount = (100 * intensity.particleCount).toInt().coerceIn(50, 200)
+    val raindrops = remember(intensity.particleCount) { generateRaindrops(rainCount) }
     var animationTime by remember { mutableStateOf(0f) }
     var lastFrameTime by remember { mutableStateOf(0L) }
     var lightningFlash by remember { mutableStateOf(0f) }
@@ -779,54 +982,62 @@ private fun ThunderShowerEffect(modifier: Modifier) {
     LaunchedEffect(Unit) {
         while (isActive) {
             withFrameMillis { frameTime ->
-                if (lastFrameTime > 0) {
-                    val delta = (frameTime - lastFrameTime) / 1000f
-                    animationTime += delta
+                if (frameRateLimiter.shouldRender(frameTime)) {
+                    if (lastFrameTime > 0) {
+                        val delta = (frameTime - lastFrameTime) / 1000f
+                        animationTime += delta
 
-                    // 闪电效果
-                    if (animationTime >= nextLightningTime) {
-                        lightningFlash = 1f
-                        nextLightningTime = animationTime + Random.nextFloat() * 6f + 4f
+                        // 闪电效果
+                        if (animationTime >= nextLightningTime) {
+                            lightningFlash = 1f
+                            nextLightningTime = animationTime + Random.nextFloat() * 6f + 4f
+                        }
+                        // 闪电衰减
+                        if (lightningFlash > 0f) {
+                            lightningFlash = (lightningFlash - delta * 4f).coerceAtLeast(0f)
+                        }
                     }
-                    // 闪电衰减
-                    if (lightningFlash > 0f) {
-                        lightningFlash = (lightningFlash - delta * 4f).coerceAtLeast(0f)
-                    }
+                    lastFrameTime = frameTime
                 }
-                lastFrameTime = frameTime
             }
         }
     }
 
     Canvas(modifier = modifier.fillMaxSize()) {
+        // 优化: 根据强度调整参数
+        val speedMultiplier = intensity.speed
+        val alphaMultiplier = intensity.alpha
+        val thicknessMultiplier = intensity.thickness
+
         // 绘制雨滴
         raindrops.forEach { drop ->
-            val speedFactor = 180f
+            val speedFactor = 180f * speedMultiplier
             val x = ((drop.x + animationTime * drop.speedX * 35) % (size.width + 100f)) - 50f
             val y = ((drop.y + animationTime * drop.speedY * speedFactor) % (size.height + drop.length)) - drop.length
 
-            val endX = x + drop.speedX * drop.length * 0.15f
+            // 雨滴垂直下落
+            val endX = x
             val endY = y + drop.length
 
             drawLine(
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        Color.White.copy(alpha = drop.alpha * 0.1f),
-                        Color.White.copy(alpha = drop.alpha * 0.6f),
-                        Color.White.copy(alpha = drop.alpha)
+                        Color.White.copy(alpha = drop.alpha * alphaMultiplier * 0.1f),
+                        Color.White.copy(alpha = drop.alpha * alphaMultiplier * 0.6f),
+                        Color.White.copy(alpha = drop.alpha * alphaMultiplier)
                     ),
                     startY = y,
                     endY = endY
                 ),
                 start = Offset(x, y),
                 end = Offset(endX, endY),
-                strokeWidth = drop.thickness,
+                strokeWidth = drop.thickness * thicknessMultiplier,
                 cap = StrokeCap.Round
             )
 
             drawCircle(
-                color = Color.White.copy(alpha = drop.alpha * 0.8f),
-                radius = drop.thickness * 0.8f,
+                color = Color.White.copy(alpha = drop.alpha * alphaMultiplier * 0.8f),
+                radius = drop.thickness * thicknessMultiplier * 0.8f,
                 center = Offset(endX, endY)
             )
         }
@@ -844,76 +1055,97 @@ private fun ThunderShowerEffect(modifier: Modifier) {
 
 /**
  * 雨夹雪效果 - 雨滴 + 雪花混合
+ * 支持天气强度调整
  */
 @Composable
-private fun SleetEffect(modifier: Modifier) {
-    val raindrops = remember { generateRaindrops() }
-    val snowflakes = remember { generateSnowflakes() }
+private fun SleetEffect(
+    modifier: Modifier,
+    intensity: WeatherIntensity = WeatherIntensity(),
+    frameRateLimiter: FrameRateLimiter = FrameRateLimiter()
+) {
+    // 根据强度动态调整粒子数量
+    val rainCount = (50 * intensity.particleCount).toInt().coerceIn(25, 100)
+    val snowCount = (25 * intensity.particleCount).toInt().coerceIn(10, 60)
+
+    val raindrops = remember(intensity.particleCount) { generateRaindrops(rainCount) }
+    val snowflakes = remember(intensity.particleCount) { generateSnowflakes(snowCount) }
     var animationTime by remember { mutableStateOf(0f) }
     var lastFrameTime by remember { mutableStateOf(0L) }
 
     LaunchedEffect(Unit) {
         while (isActive) {
             withFrameMillis { frameTime ->
-                if (lastFrameTime > 0) {
-                    val delta = (frameTime - lastFrameTime) / 1000f
-                    animationTime += delta
+                if (frameRateLimiter.shouldRender(frameTime)) {
+                    if (lastFrameTime > 0) {
+                        val delta = (frameTime - lastFrameTime) / 1000f
+                        animationTime += delta
+                    }
+                    lastFrameTime = frameTime
                 }
-                lastFrameTime = frameTime
             }
         }
     }
 
     Canvas(modifier = modifier.fillMaxSize()) {
-        // 绘制雨滴（数量减半）
-        raindrops.take(50).forEach { drop ->
-            val speedFactor = 160f
+        // 优化: 根据强度调整参数
+        val speedMultiplier = intensity.speed
+        val sizeMultiplier = intensity.size
+        val alphaMultiplier = intensity.alpha
+        val thicknessMultiplier = intensity.thickness
+
+        // 绘制雨滴
+        raindrops.forEach { drop ->
+            val speedFactor = 160f * speedMultiplier
             val x = ((drop.x + animationTime * drop.speedX * 30) % (size.width + 100f)) - 50f
             val y = ((drop.y + animationTime * drop.speedY * speedFactor) % (size.height + drop.length)) - drop.length
 
-            val endX = x + drop.speedX * drop.length * 0.15f
+            // 雨滴垂直下落
+            val endX = x
             val endY = y + drop.length
 
             drawLine(
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        Color.White.copy(alpha = drop.alpha * 0.1f),
-                        Color.White.copy(alpha = drop.alpha * 0.5f),
-                        Color.White.copy(alpha = drop.alpha * 0.8f)
+                        Color.White.copy(alpha = drop.alpha * alphaMultiplier * 0.1f),
+                        Color.White.copy(alpha = drop.alpha * alphaMultiplier * 0.5f),
+                        Color.White.copy(alpha = drop.alpha * alphaMultiplier * 0.8f)
                     ),
                     startY = y,
                     endY = endY
                 ),
                 start = Offset(x, y),
                 end = Offset(endX, endY),
-                strokeWidth = drop.thickness * 0.8f,
+                strokeWidth = drop.thickness * thicknessMultiplier * 0.8f,
                 cap = StrokeCap.Round
             )
         }
 
-        // 绘制雪花（数量减半）
-        snowflakes.take(25).forEach { flake ->
+        // 绘制雪花
+        snowflakes.forEach { flake ->
             val wobble = sin(animationTime * flake.wobbleSpeed + flake.wobbleOffset)
             val x = flake.x + wobble * flake.wobbleAmplitude
-            val y = ((flake.y + animationTime * flake.speedY * 25) % (size.height + flake.size * 4)) - flake.size * 2
+            val y = ((flake.y + animationTime * flake.speedY * speedMultiplier * 25) % (size.height + flake.size * 4)) - flake.size * 2
+
+            val adjustedSize = flake.size * sizeMultiplier
+            val adjustedAlpha = flake.alpha * alphaMultiplier
 
             drawCircle(
                 brush = Brush.radialGradient(
                     colors = listOf(
-                        Color.White.copy(alpha = flake.alpha * 0.4f),
-                        Color.White.copy(alpha = flake.alpha * 0.2f),
+                        Color.White.copy(alpha = adjustedAlpha * 0.4f),
+                        Color.White.copy(alpha = adjustedAlpha * 0.2f),
                         Color.White.copy(alpha = 0f)
                     ),
                     center = Offset(x, y),
-                    radius = flake.size * 2f
+                    radius = adjustedSize * 2f
                 ),
-                radius = flake.size * 2f,
+                radius = adjustedSize * 2f,
                 center = Offset(x, y)
             )
 
             drawCircle(
-                color = Color.White.copy(alpha = flake.alpha * 0.8f),
-                radius = flake.size * 0.5f,
+                color = Color.White.copy(alpha = adjustedAlpha * 0.8f),
+                radius = adjustedSize * 0.5f,
                 center = Offset(x, y)
             )
         }
@@ -1106,8 +1338,8 @@ private fun generateStars(): List<Star> {
     }
 }
 
-private fun generateRaindrops(): List<Raindrop> {
-    return List(100) {
+private fun generateRaindrops(count: Int = 100): List<Raindrop> {
+    return List(count) {
         val speed = Random.nextFloat() * 8f + 12f
         Raindrop(
             x = Random.nextFloat() * 1200f,
@@ -1123,8 +1355,8 @@ private fun generateRaindrops(): List<Raindrop> {
 }
 
 // 背景雨层（小、淡、慢）
-private fun generateRaindropsBg(): List<Raindrop> {
-    return List(60) {
+private fun generateRaindropsBg(count: Int = 60): List<Raindrop> {
+    return List(count) {
         val speed = Random.nextFloat() * 6f + 8f
         Raindrop(
             x = Random.nextFloat() * 1200f,
@@ -1140,8 +1372,8 @@ private fun generateRaindropsBg(): List<Raindrop> {
 }
 
 // 前景雨层（大、明显、快）
-private fun generateRaindropsFg(): List<Raindrop> {
-    return List(40) {
+private fun generateRaindropsFg(count: Int = 40): List<Raindrop> {
+    return List(count) {
         val speed = Random.nextFloat() * 10f + 15f
         Raindrop(
             x = Random.nextFloat() * 1200f,
@@ -1169,8 +1401,8 @@ private fun generateRainMist(): List<RainMist> {
     }
 }
 
-private fun generateSnowflakes(): List<Snowflake> {
-    return List(50) {
+private fun generateSnowflakes(count: Int = 50): List<Snowflake> {
+    return List(count) {
         Snowflake(
             x = Random.nextFloat() * 1200f,
             y = Random.nextFloat() * 2000f,
