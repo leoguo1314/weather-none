@@ -267,6 +267,21 @@ fun SettingsScreen(
                 // Premium benefits section
                 SectionHeader("权益")
                 IosCard {
+                    // 免广告 - 所有用户均已解锁
+                    SimpleItem(
+                        title = "免广告",
+                        titleColor = IosTextPrimary,
+                        trailing = {
+                            Icon(
+                                imageVector = Icons.Outlined.Check,
+                                contentDescription = "已解锁",
+                                modifier = Modifier.size(18.dp),
+                                tint = IosAccentGreen
+                            )
+                        },
+                        onClick = { }
+                    )
+                    IosDivider()
                     // 天气动效 - 所有用户均已解锁
                     SimpleItem(
                         title = "天气动效",

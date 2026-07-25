@@ -3,6 +3,7 @@ import java.util.Properties
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    alias(libs.plugins.compose.compiler)
     alias(libs.plugins.ksp)
     id("com.google.dagger.hilt.android")
 }
@@ -55,8 +56,8 @@ android {
         applicationId = "com.skypulse.weather"
         minSdk = 26
         targetSdk = 35
-        versionCode = 945
-        versionName = "3.3.70"
+        versionCode = 947
+        versionName = "3.3.72"
 
         vectorDrawables {
             useSupportLibrary = true
@@ -107,9 +108,7 @@ android {
         buildConfig = true
     }
 
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.8"
-    }
+
 
     packaging {
         resources {
@@ -136,11 +135,12 @@ dependencies {
     implementation(libs.compose.animation)
     implementation(libs.compose.material.icons.extended)
 
+
     // Networking
     implementation(libs.retrofit)
     implementation(libs.retrofit.converter.moshi)
     implementation(libs.moshi.kotlin)
-    ksp("com.squareup.moshi:moshi-kotlin-codegen:1.15.0")
+    ksp(libs.moshi.kotlin.codegen)
     implementation(libs.okhttp.logging)
 
     // Location
@@ -160,7 +160,7 @@ dependencies {
     ksp(libs.hilt.work.compiler)
 
     // WorkManager
-    implementation("androidx.work:work-runtime-ktx:2.9.0")
+    implementation("androidx.work:work-runtime-ktx:2.10.0")
 
     // Room
     implementation(libs.room.runtime)
