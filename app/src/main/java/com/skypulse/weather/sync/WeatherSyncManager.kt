@@ -2,6 +2,7 @@
 
 import android.util.Log
 import com.skypulse.weather.data.LocationManager
+import com.skypulse.weather.data.LocationRequestCoordinator
 import com.skypulse.weather.data.remote.SkyconCalibrator
 import com.skypulse.weather.model.City
 import com.skypulse.weather.model.WeatherResponse
@@ -33,7 +34,8 @@ class WeatherSyncManager @Inject constructor(
     private val repository: WeatherRepository,
     private val cityRepository: CityRepository,
     private val locationManager: LocationManager,
-    private val skyconCalibrator: SkyconCalibrator
+    private val skyconCalibrator: SkyconCalibrator,
+    private val locationRequestCoordinator: LocationRequestCoordinator
 ) {
 
     companion object {
@@ -208,7 +210,10 @@ class WeatherSyncManager @Inject constructor(
                 locW("refresh_with_location_no_permission: elapsed=${elapsedSince(startMs)}ms")
                 null
             } else {
-                locationManager.requestBestLocation(highAccuracy = highAccuracy)
+                locationRequestCoordinator.requestLocation(
+                    caller = LocationRequestCoordinator.Caller.FOREGROUND_REFRESH,
+                    highAccuracy = highAccuracy
+                )
             }
             locI("refresh_with_location_locate_done: elapsed=${elapsedSince(locateStartMs)}ms, result=${location?.let { "lat=${it.latitude}, lon=${it.longitude}, accuracy=${it.accuracy}m, name=${it.name}" } ?: "null"}")
 
@@ -317,7 +322,10 @@ class WeatherSyncManager @Inject constructor(
                 return@withLock SyncResult.LocationFailed
             }
 
-            val location = locationManager.requestBestLocation(highAccuracy = false)
+            val location = locationRequestCoordinator.requestLocation(
+                caller = LocationRequestCoordinator.Caller.LOCATION_CALIBRATION,
+                highAccuracy = false
+            )
             lastLocationCalibrationMillis = System.currentTimeMillis()
             if (location == null) {
                 locW("location_calibration_failed: elapsed=${elapsedSince(startMs)}ms")
@@ -381,7 +389,10 @@ class WeatherSyncManager @Inject constructor(
                 locW("widget_refresh_no_permission: elapsed=${elapsedSince(startMs)}ms")
                 null
             } else {
-                locationManager.requestBestLocation()
+                locationRequestCoordinator.requestLocation(
+                    caller = LocationRequestCoordinator.Caller.WIDGET_REFRESH,
+                    highAccuracy = false
+                )
             }
             locI("widget_refresh_locate_done: elapsed=${elapsedSince(locateStartMs)}ms, result=${location?.let { "lat=${it.latitude}, lon=${it.longitude}, accuracy=${it.accuracy}m, name=${it.name}" } ?: "null"}")
 
