@@ -13,6 +13,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -29,11 +30,14 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -717,15 +721,35 @@ private fun WeatherContentBody(
                 )
             }
 
-            Text(
-                text = "\u6c14\u8c61\u6570\u636e\u6765\u81ea\u5f69\u4e91\u5929\u6c14",
-                style = MaterialTheme.typography.bodySmall,
-                color = TextSecondary.copy(alpha = 0.4f),
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 22.dp, bottom = 22.dp),
-                textAlign = TextAlign.Center
-            )
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "\u6c14\u8c61\u6570\u636e\u6765\u81ea",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextSecondary.copy(alpha = 0.4f)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                val ctx = LocalContext.current
+                val logoBitmap = remember(ctx) {
+                    val bmp = android.graphics.BitmapFactory.decodeResource(
+                        ctx.resources, com.skypulse.weather.R.drawable.ic_caiyun_logo
+                    )
+                    bmp?.asImageBitmap()
+                }
+                logoBitmap?.let { bitmap ->
+                    Image(
+                        bitmap = bitmap,
+                        contentDescription = null,
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier.height(10.dp)
+                    )
+                }
+            }
             Spacer(modifier = Modifier.height(SkyPulseDesignSystem.Spacing.sectionGap))
         }
     }
