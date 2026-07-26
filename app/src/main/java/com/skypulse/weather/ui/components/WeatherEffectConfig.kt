@@ -97,43 +97,30 @@ class FrameRateLimiter(private val targetFps: Int = 60) {
         }
         return false
     }
-
-    /**
-     * 获取帧间隔（秒）
-     */
-    fun getFrameInterval(): Float = frameIntervalMs / 1000f
 }
 
 /**
- * 天气过渡状态
- * 用于实现天气切换时的平滑过渡
+ * 动画质量档位
+ * 用于省电模式降级：粒子数量减半、各级效果帧率下调
  */
-data class WeatherTransitionState(
-    val previousSkycon: String? = null,
-    val currentSkycon: String? = null,
-    val transitionProgress: Float = 1f,  // 0 = 显示旧效果, 1 = 显示新效果
-    val isTransitioning: Boolean = false
-)
+data class EffectQuality(
+    val particleScale: Float,   // 粒子数量倍率
+    val precipFps: Int,         // 雨/雷/雨夹雪帧率
+    val mediumFps: Int,         // 雪/风帧率
+    val ambientFps: Int         // 晴/夜/云/雾帧率
+) {
+    companion object {
+        val High = EffectQuality(1f, 60, 30, 20)
+        val Low = EffectQuality(0.5f, 30, 20, 10)
+    }
+}
 
 /**
- * 雨滴溅射效果
- * 当雨滴落到卡片顶部时产生的水花效果
+ * 实时风信息（用于驱动雨丝倾斜、云层漂移方向、风粒子速度）
+ * @param speedKmh 风速（km/h）
+ * @param directionDeg 风向（度，气象惯例：风的来向，0=北，90=东）
  */
-data class RainSplash(
-    val x: Float,           // 溅射位置 x
-    val y: Float,           // 溅射位置 y
-    val startTime: Float,   // 开始时间
-    val lifetime: Float = 0.4f,  // 生命周期（秒）
-    val size: Float = 8f    // 溅射大小
-)
-
-/**
- * 4层雨效果配置
- */
-data class RainLayerConfig(
-    val count: Int,         // 粒子数量
-    val speedFactor: Float, // 速度系数
-    val alphaFactor: Float, // 透明度系数
-    val sizeFactor: Float,  // 尺寸系数
-    val thicknessFactor: Float // 线条粗细系数
+data class WindInfo(
+    val speedKmh: Float,
+    val directionDeg: Float
 )

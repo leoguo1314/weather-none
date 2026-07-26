@@ -3,6 +3,7 @@ package com.skypulse.weather.ui.components
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.util.LruCache
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
@@ -21,6 +22,12 @@ import java.io.ByteArrayInputStream
 
 object LucideSvgRenderer {
 
+    // SVG 文本读取 + 解析 + 光栅化成本较高；列表滚动回收/重组时会反复触发。
+    // 全局 LRU 缓存（按字节数上限 4MB），同名同尺寸同配色的图标只解析一次。
+    private val bitmapCache = object : LruCache<String, Bitmap>(4 * 1024 * 1024) {
+        override fun sizeOf(key: String, value: Bitmap): Int = value.byteCount
+    }
+
     fun renderBitmap(
         context: Context,
         name: String,
@@ -28,6 +35,8 @@ object LucideSvgRenderer {
         strokeColor: String? = null,
         fillColor: String? = null
     ): Bitmap? {
+        val cacheKey = "$name|$sizePx|$strokeColor|$fillColor"
+        bitmapCache.get(cacheKey)?.let { return it }
         return try {
             val assetPath = "lucide/$name.svg"
             val svg = context.assets.open(assetPath).use { input ->
@@ -48,6 +57,7 @@ object LucideSvgRenderer {
             svg.documentWidth = sizePx.toFloat()
             svg.documentHeight = sizePx.toFloat()
             svg.renderToCanvas(canvas)
+            bitmapCache.put(cacheKey, bitmap)
             bitmap
         } catch (_: Exception) {
             null

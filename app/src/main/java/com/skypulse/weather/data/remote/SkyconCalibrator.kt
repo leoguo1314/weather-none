@@ -14,6 +14,10 @@ import javax.inject.Singleton
  * - 当彩云返回 PARTLY_CLOUDY_DAY 或 PARTLY_CLOUDY_NIGHT 时，同样进行校准。
  * 若气象局判定为"晴"或不同天气，则覆盖彩云的 skycon。
  *
+ * 校准流程（两步）：
+ * 1. 调 geo 接口获取 locationKey（基于当前经纬度）
+ * 2. 用 locationKey 调天气接口获取实况天气编码
+ *
  * 校准范围：仅当前定位城市。
  * 校准条件：skycon == "CLOUDY" 或 skycon == "PARTLY_CLOUDY_DAY/NIGHT" 时才触发请求。
  * 容错策略：小米 API 超时或失败时，保持彩云原始值不变。
@@ -110,9 +114,25 @@ class SkyconCalibrator @Inject constructor(
     private suspend fun fetchXiaomiWeather(longitude: Double, latitude: Double): String? {
         return withTimeoutOrNull(CALIBRATE_TIMEOUT_MS) {
             try {
+                // 第一步：获取 locationKey
+                val geoResults = xiaomiWeatherApi.getLocationKey(
+                    latitude = latitude,
+                    longitude = longitude,
+                    appKey = BuildConfig.XIAOMI_APP_KEY,
+                    sign = BuildConfig.XIAOMI_SIGN
+                )
+                val locationKey = geoResults.firstOrNull()?.locationKey
+                if (locationKey == null) {
+                    FileLogger.w(TAG, "地理编码返回空 locationKey")
+                    return@withTimeoutOrNull null
+                }
+                FileLogger.i(TAG, "小米地理编码: locationKey=$locationKey")
+
+                // 第二步：获取天气数据
                 val response = xiaomiWeatherApi.getCurrentWeather(
                     latitude = latitude,
                     longitude = longitude,
+                    locationKey = locationKey,
                     appKey = BuildConfig.XIAOMI_APP_KEY,
                     sign = BuildConfig.XIAOMI_SIGN
                 )

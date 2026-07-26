@@ -3,11 +3,18 @@ package com.skypulse.weather.ui.components
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.util.LruCache
 import com.caverock.androidsvg.SVG
 import java.io.ByteArrayInputStream
 
 object WeatherSvgRenderer {
     private const val DefaultRaindropStroke = "#0A5AD4"
+
+    // SVG 文本读取 + 解析 + 光栅化成本较高；小时/每日预报列表滚动回收后会反复触发。
+    // 全局 LRU 缓存（按字节数上限 4MB），同图标同尺寸同配色只解析一次。
+    private val bitmapCache = object : LruCache<String, Bitmap>(4 * 1024 * 1024) {
+        override fun sizeOf(key: String, value: Bitmap): Int = value.byteCount
+    }
 
     fun renderBitmap(
         context: Context,
@@ -15,6 +22,8 @@ object WeatherSvgRenderer {
         sizePx: Int,
         precipitationColor: Int? = null
     ): Bitmap? {
+        val cacheKey = "$icon|$sizePx|$precipitationColor"
+        bitmapCache.get(cacheKey)?.let { return it }
         return try {
             val assetPath = "meteocons/fill/$icon.svg"
             val svg = context.assets.open(assetPath).use { input ->
@@ -31,6 +40,7 @@ object WeatherSvgRenderer {
             svg.documentHeight = sizePx.toFloat()
             svg.renderToCanvas(canvas)
 
+            bitmapCache.put(cacheKey, bitmap)
             bitmap
         } catch (_: Exception) {
             null

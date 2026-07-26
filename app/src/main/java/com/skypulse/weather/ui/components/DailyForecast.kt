@@ -10,7 +10,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -142,7 +141,7 @@ private fun DailyColumn(
     Column(
         modifier = Modifier
             .width(itemWidth)
-            .then(if (isPast) Modifier.alpha(0.52f).blur(0.45.dp) else Modifier),
+            .then(if (isPast) Modifier.alpha(0.52f) else Modifier),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // --- Date + Weekday ---

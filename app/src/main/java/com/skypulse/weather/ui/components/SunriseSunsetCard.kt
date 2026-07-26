@@ -112,8 +112,6 @@ fun SunriseSunsetCard(
         }
     }
 
-    android.util.Log.d("SunriseSunsetCard", "Card: sunrise=$todaySunriseTime, sunset=$todaySunsetTime, currentMinutes=$currentMinutes, isDaytime=$isDaytime, progress=${cardState.progress}, astroListSize=${astro?.size ?: 0}")
-
     GlassCard(modifier = modifier) {
         Column(
             modifier = Modifier

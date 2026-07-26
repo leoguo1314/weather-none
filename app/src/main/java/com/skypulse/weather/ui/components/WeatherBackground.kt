@@ -1,5 +1,7 @@
 package com.skypulse.weather.ui.components
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -14,6 +16,7 @@ import com.skypulse.weather.util.WeatherUtils
 fun WeatherBackground(
     skycon: String?,
     daily: DailyForecast? = null,
+    wind: WindInfo? = null,
     modifier: Modifier = Modifier,
     showParticles: Boolean = true,
     content: @Composable BoxScope.() -> Unit
@@ -21,12 +24,22 @@ fun WeatherBackground(
     val isDay = WeatherUtils.isCurrentlyDay(daily)
     val gradientColors = WeatherUtils.getWeatherGradient(skycon, isDay)
 
+    // 背景色平滑过渡：天气/昼夜切换时逐色插值（渐变列表恒为 5 色），避免硬切。
+    // 首次组合时 animateColorAsState 直接取目标值，不会出现入场闪变。
+    val animatedColors = gradientColors.mapIndexed { index, color ->
+        animateColorAsState(
+            targetValue = color,
+            animationSpec = tween(durationMillis = 600),
+            label = "bg_color_$index"
+        ).value
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(
                 Brush.verticalGradient(
-                    colors = gradientColors,
+                    colors = animatedColors,
                     startY = 0f,
                     endY = Float.POSITIVE_INFINITY
                 )
@@ -37,6 +50,7 @@ fun WeatherBackground(
             WeatherEffectOverlay(
                 skycon = skycon,
                 isDay = isDay,
+                wind = wind,
                 modifier = Modifier.fillMaxSize()
             )
         }

@@ -165,6 +165,19 @@ fun WeatherScreen(
         is WeatherUiState.Success -> s.weather.result?.daily
         else -> null
     }
+    // 实时风数据（驱动粒子动画：雨丝倾斜、云层漂移方向）
+    val wind = when (val s = uiState) {
+        is WeatherUiState.Success -> s.weather.result?.realtime?.wind?.let { w ->
+            val speed = w.speed
+            val direction = w.direction
+            if (speed != null && direction != null) {
+                WindInfo(speedKmh = speed.toFloat(), directionDeg = direction.toFloat())
+            } else {
+                null
+            }
+        }
+        else -> null
+    }
     val isDay = WeatherUtils.isCurrentlyDay(daily)
     val weatherTheme = remember(skycon, daily, isDay) {
         WeatherUtils.getWeatherTheme(skycon, isDay)
@@ -235,7 +248,7 @@ fun WeatherScreen(
                         deviceId = settingsViewModel.getDeviceId()
                     )
                 }
-                WeatherBackground(skycon = skycon, daily = daily) {
+                WeatherBackground(skycon = skycon, daily = daily, wind = wind) {
                     Box(modifier = Modifier.fillMaxSize()) {
                         when (val state = uiState) {
                             is WeatherUiState.Loading -> {

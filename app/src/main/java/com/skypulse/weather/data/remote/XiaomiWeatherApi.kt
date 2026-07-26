@@ -17,17 +17,64 @@ import retrofit2.http.Query
  */
 interface XiaomiWeatherApi {
 
-    @GET("wtr-v3/weather/all")
-    suspend fun getCurrentWeather(
+    /**
+     * 地理编码反查：根据经纬度获取 locationKey。
+     * 用于后续天气请求的前置参数。
+     */
+    @GET("wtr-v3/location/city/geo")
+    suspend fun getLocationKey(
         @Query("latitude") latitude: Double,
         @Query("longitude") longitude: Double,
         @Query("appKey") appKey: String,
         @Query("sign") sign: String,
+        @Query("romVersion") romVersion: String = "eng.localh.20231105.141708",
+        @Query("appVersion") appVersion: String = "17000318",
+        @Query("alpha") alpha: Boolean = false,
         @Query("isGlobal") isGlobal: Boolean = false,
+        @Query("device") device: String = "dandelion",
+        @Query("modDevice") modDevice: String = "dandelion",
         @Query("locale") locale: String = "zh_cn",
-        @Query("days") days: Int = 1
+        @Query("oaid") oaid: String = ""
+    ): List<XiaomiGeoResult>
+
+    /**
+     * 获取实况天气数据。
+     * locationKey 通过前置 geo 接口获取。
+     */
+    @GET("wtr-v3/weather/all")
+    suspend fun getCurrentWeather(
+        @Query("latitude") latitude: Double,
+        @Query("longitude") longitude: Double,
+        @Query("isLocated") isLocated: Boolean = false,
+        @Query("locationKey") locationKey: String,
+        @Query("days") days: Int = 15,
+        @Query("appKey") appKey: String,
+        @Query("sign") sign: String,
+        @Query("romVersion") romVersion: String = "eng.localh.20231105.141708",
+        @Query("appVersion") appVersion: String = "17000318",
+        @Query("alpha") alpha: Boolean = false,
+        @Query("isGlobal") isGlobal: Boolean = false,
+        @Query("device") device: String = "dandelion",
+        @Query("modDevice") modDevice: String = "dandelion",
+        @Query("locale") locale: String = "zh_cn",
+        @Query("oaid") oaid: String = ""
     ): XiaomiWeatherResponse
 }
+
+/**
+ * 小米地理编码响应体。
+ */
+@JsonClass(generateAdapter = true)
+data class XiaomiGeoResult(
+    val name: String? = null,
+    val key: String? = null,
+    @Json(name = "locationKey") val locationKey: String? = null,
+    val latitude: String? = null,
+    val longitude: String? = null,
+    @Json(name = "affiliation") val affiliation: String? = null,
+    val status: Int? = null,
+    val timeZoneShift: Int? = null
+)
 
 /**
  * 小米天气响应体 — 仅解析 current.weather 字段。
