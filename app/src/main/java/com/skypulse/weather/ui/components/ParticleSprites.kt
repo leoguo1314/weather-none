@@ -1,0 +1,223 @@
+package com.skypulse.weather.ui.components
+
+import android.graphics.Bitmap
+import android.graphics.LinearGradient
+import android.graphics.Paint
+import android.graphics.RadialGradient
+import android.graphics.Shader
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
+import kotlin.math.roundToInt
+
+/**
+ * 粒子精灵（Sprite）缓存
+ *
+ * 背景：原实现每帧为每个粒子临时创建 Brush/Shader 对象
+ * （暴雨天气 4 层约 240 个雨滴 + 云/雾/光晕，每帧数百次堆分配和 native Shader 创建），
+ * 造成持续的 GC 压力与额外耗电。
+ *
+ * 方案：将各种径向/线性渐变按「归一化渐变剖面」离线烘焙成小尺寸位图
+ * （柔和渐变 128px 已足够，放大绘制无可见失真），每帧通过 drawImage
+ * 缩放 + alpha 调制绘制：
+ *   原实现：gradient(color * pulseAlpha)  →  每帧新建 Shader
+ *   现实现：sprite(归一化剖面) + drawImage(alpha = pulseAlpha)  →  零分配
+ * 二者渲染结果在数学上等价，视觉效果保持一致。
+ *
+ * 所有访问均发生在主线程（组合/绘制阶段），普通 HashMap 即可。
+ */
+object ParticleSprites {
+
+    private const val GlowSize = 128
+    private const val StreakWidth = 16
+    private const val StreakHeight = 128
+
+    private val whiteCoreCache = HashMap<String, ImageBitmap>()
+    private val tintCache = HashMap<Color, ColorFilter>()
+
+    // ============ 预置白色光晕（归一化剖面：中心 alpha=1） ============
+
+    /** 通用柔和光晕：(1, 0.5, 0)，用于雪/星/光束外层/云局部/风等 */
+    val glowSoft: ImageBitmap by lazy {
+        bakeRadial(
+            0f to Color.White,
+            0.5f to Color.White.copy(alpha = 0.5f),
+            1f to Color.White.copy(alpha = 0f)
+        )
+    }
+
+    /** 雨底水雾：(0.6, 0.3, 0.1, 0) 归一化 */
+    val glowMist: ImageBitmap by lazy {
+        bakeRadial(
+            0f to Color.White,
+            1f / 3f to Color.White.copy(alpha = 0.5f),
+            2f / 3f to Color.White.copy(alpha = 1f / 6f),
+            1f to Color.White.copy(alpha = 0f)
+        )
+    }
+
+    /** 雾气团：(1, 0.7, 0.3, 0) 归一化 */
+    val glowFog: ImageBitmap by lazy {
+        bakeRadial(
+            0f to Color.White,
+            1f / 3f to Color.White.copy(alpha = 0.7f),
+            2f / 3f to Color.White.copy(alpha = 0.3f),
+            1f to Color.White.copy(alpha = 0f)
+        )
+    }
+
+    /** 云朵主体：(0.7, 0.4, 0.15, 0) 归一化 */
+    val glowCloudMain: ImageBitmap by lazy {
+        bakeRadial(
+            0f to Color.White,
+            1f / 3f to Color.White.copy(alpha = 0.4f / 0.7f),
+            2f / 3f to Color.White.copy(alpha = 0.15f / 0.7f),
+            1f to Color.White.copy(alpha = 0f)
+        )
+    }
+
+    /** 云朵左侧凸起：(0.65, 0.35, 0) 归一化 */
+    val glowCloudLeft: ImageBitmap by lazy {
+        bakeRadial(
+            0f to Color.White,
+            0.5f to Color.White.copy(alpha = 0.35f / 0.65f),
+            1f to Color.White.copy(alpha = 0f)
+        )
+    }
+
+    /** 云朵顶部凸起：(0.55, 0.25, 0) 归一化 */
+    val glowCloudTop: ImageBitmap by lazy {
+        bakeRadial(
+            0f to Color.White,
+            0.5f to Color.White.copy(alpha = 0.25f / 0.55f),
+            1f to Color.White.copy(alpha = 0f)
+        )
+    }
+
+    // ============ 雨丝精灵（垂直线性渐变，顶部透明 → 底部最亮） ============
+
+    /** 柔和雨丝：(0.1, 0.5, 1.0)，用于远/中景雨层、雨夹雪 */
+    val rainStreakSoft: ImageBitmap by lazy { bakeStreak(0.1f, 0.5f, 1.0f) }
+
+    /** 高对比雨丝：(0.1, 0.6, 1.0)，用于近景雨层、雷阵雨 */
+    val rainStreakHard: ImageBitmap by lazy { bakeStreak(0.1f, 0.6f, 1.0f) }
+
+    // ============ 参数化精灵 ============
+
+    /**
+     * 白心彩色边缘光晕（用于阳光核心光斑、浮动光点）
+     * @param edgeColor 边缘颜色
+     * @param midAlpha 中间位置（0.5 半径处）颜色相对 alpha
+     */
+    fun whiteCoreGlow(edgeColor: Color, midAlpha: Float): ImageBitmap {
+        val key = "${edgeColor.toArgb()}|$midAlpha"
+        return whiteCoreCache.getOrPut(key) {
+            bakeRadial(
+                0f to Color.White,
+                0.5f to edgeColor.copy(alpha = midAlpha),
+                1f to edgeColor.copy(alpha = 0f)
+            )
+        }
+    }
+
+    /** 颜色滤镜缓存（SrcIn 模式：将白色光晕染色为目标颜色，alpha 由光晕剖面决定） */
+    fun tint(color: Color): ColorFilter {
+        return tintCache.getOrPut(color) { ColorFilter.tint(color) }
+    }
+
+    // ============ 烘焙实现 ============
+
+    private fun bakeRadial(vararg stops: Pair<Float, Color>): ImageBitmap {
+        val bitmap = Bitmap.createBitmap(GlowSize, GlowSize, Bitmap.Config.ARGB_8888)
+        val canvas = android.graphics.Canvas(bitmap)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = RadialGradient(
+                GlowSize / 2f, GlowSize / 2f, GlowSize / 2f,
+                stops.map { it.second.toArgb() }.toIntArray(),
+                stops.map { it.first }.toFloatArray(),
+                Shader.TileMode.CLAMP
+            )
+        }
+        canvas.drawRect(0f, 0f, GlowSize.toFloat(), GlowSize.toFloat(), paint)
+        return bitmap.asImageBitmap()
+    }
+
+    private fun bakeStreak(topAlpha: Float, midAlpha: Float, bottomAlpha: Float): ImageBitmap {
+        val bitmap = Bitmap.createBitmap(StreakWidth, StreakHeight, Bitmap.Config.ARGB_8888)
+        val canvas = android.graphics.Canvas(bitmap)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = LinearGradient(
+                0f, 0f, 0f, StreakHeight.toFloat(),
+                intArrayOf(
+                    Color.White.copy(alpha = topAlpha).toArgb(),
+                    Color.White.copy(alpha = midAlpha).toArgb(),
+                    Color.White.copy(alpha = bottomAlpha).toArgb()
+                ),
+                null,
+                Shader.TileMode.CLAMP
+            )
+        }
+        canvas.drawRect(0f, 0f, StreakWidth.toFloat(), StreakHeight.toFloat(), paint)
+        return bitmap.asImageBitmap()
+    }
+}
+
+/**
+ * 绘制径向光晕精灵（等价于原 drawCircle + radialGradient，但无任何逐帧分配）
+ * @param radius 光晕半径（像素）
+ * @param alpha 整体 alpha（即原渐变中心点的 alpha）
+ */
+fun DrawScope.drawGlow(
+    sprite: ImageBitmap,
+    centerX: Float,
+    centerY: Float,
+    radius: Float,
+    alpha: Float,
+    colorFilter: ColorFilter? = null
+) {
+    if (radius <= 0f || alpha <= 0f) return
+    val diameter = (radius * 2f).roundToInt().coerceAtLeast(1)
+    drawImage(
+        image = sprite,
+        dstOffset = IntOffset(
+            (centerX - radius).roundToInt(),
+            (centerY - radius).roundToInt()
+        ),
+        dstSize = IntSize(diameter, diameter),
+        alpha = alpha.coerceAtMost(1f),
+        colorFilter = colorFilter
+    )
+}
+
+/**
+ * 绘制雨丝精灵（等价于原 drawLine + verticalGradient，但无任何逐帧分配）
+ * @param x 雨丝中心 x
+ * @param top 雨丝顶部 y
+ */
+fun DrawScope.drawStreak(
+    sprite: ImageBitmap,
+    x: Float,
+    top: Float,
+    width: Float,
+    height: Float,
+    alpha: Float
+) {
+    if (alpha <= 0f || width <= 0f || height <= 0f) return
+    drawImage(
+        image = sprite,
+        dstOffset = IntOffset(
+            (x - width / 2f).roundToInt(),
+            top.roundToInt()
+        ),
+        dstSize = IntSize(
+            width.roundToInt().coerceAtLeast(1),
+            height.roundToInt().coerceAtLeast(1)
+        ),
+        alpha = alpha.coerceAtMost(1f)
+    )
+}
