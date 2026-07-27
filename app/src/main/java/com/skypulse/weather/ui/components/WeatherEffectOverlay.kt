@@ -1,17 +1,11 @@
 package com.skypulse.weather.ui.components
 
-import android.content.BroadcastReceiver
-import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
-import android.os.PowerManager
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -27,7 +21,6 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.currentStateAsState
@@ -261,28 +254,6 @@ private fun DrawScope.drawSun(animationTime: Float, dim: Float = 1f) {
         radius = base * 0.038f * breath,
         center = Offset(sunX, sunY)
     )
-}
-
-/**
- * 省电模式监测（广播驱动，组合期间实时更新）
- */
-@Composable
-private fun rememberPowerSaveMode(): Boolean {
-    val context = LocalContext.current
-    val appContext = remember { context.applicationContext }
-    val powerManager = remember { appContext.getSystemService(Context.POWER_SERVICE) as PowerManager }
-    var powerSave by remember { mutableStateOf(powerManager.isPowerSaveMode) }
-    DisposableEffect(appContext) {
-        val receiver = object : BroadcastReceiver() {
-            override fun onReceive(context: Context?, intent: Intent?) {
-                powerSave = powerManager.isPowerSaveMode
-            }
-        }
-        // 系统保护广播，无需 EXPORTED/NOT_EXPORTED 标志
-        appContext.registerReceiver(receiver, IntentFilter(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED))
-        onDispose { appContext.unregisterReceiver(receiver) }
-    }
-    return powerSave
 }
 
 /**

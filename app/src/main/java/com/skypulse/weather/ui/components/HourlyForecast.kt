@@ -204,9 +204,8 @@ private fun HourlyTemperatureChart(
     val probValues = precipitation?.map { it.probability ?: 0.0 } ?: List(temperatures.size) { 0.0 }
     val skyconValues = skycons?.map { it.value } ?: List(temperatures.size) { null }
 
-    // 判断当前天气背景是否为亮色（用于AQI颜色自适应）
-    val primarySkycon = skyconValues.firstOrNull()
-    val isBrightBg = theme.isDay && WeatherUtils.isBrightBackground(primarySkycon, true)
+    // 标签位于玻璃卡片之上，对比度随卡片玻璃明暗自适应（亮玻璃用深色文字色，深玻璃用浅色文字色）
+    val isBrightBg = theme.glass.isLight
 
     val itemWidthDp = HOUR_WIDTH.dp
     val sidePad = SIDE_PADDING.dp

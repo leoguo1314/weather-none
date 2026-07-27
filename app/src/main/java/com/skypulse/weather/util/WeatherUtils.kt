@@ -27,76 +27,28 @@ object WeatherUtils {
         val background = getWeatherGradient(skycon, isDay)
         val precipitationIconColor = getPrecipitationIconColor(skycon, isDay)
 
-        // --- Card Colors & Alphas Refactoring ---
-        val cardTintColor: Color
-        if (isDay) {
-            cardTintColor = when {
-                skycon == null || skycon.contains("CLEAR") -> {
-                    // Sunny / Clear: 亮蓝色透明，比背景更亮形成层次
-                    Color(0xFF80C8F0).copy(alpha = 0.40f)
-                }
-                skycon.contains("PARTLY_CLOUDY") -> {
-                    // Partly cloudy: 亮蓝色透明，比背景更亮形成层次
-                    Color(0xFF80C0E0).copy(alpha = 0.35f)
-                }
-                skycon.contains("CLOUDY") -> {
-                    // Cloudy: 深色透明，阴天氛围
-                    Color(0xFF3A4F63).copy(alpha = 0.35f)
-                }
-                skycon.contains("RAIN") || skycon.contains("STORM") -> {
-                    // Rainy / Stormy: 深色透明，雨天沉稳
-                    Color(0xFF1E293B).copy(alpha = 0.35f)
-                }
-                skycon.contains("SNOW") -> {
-                    // Snowy: Dark slate panel for high contrast against snowy glare
-                    Color(0xFF0F172A).copy(alpha = 0.20f)
-                }
-                skycon.contains("HAZE") || skycon == "FOG" || skycon == "DUST" || skycon == "SAND" -> {
-                    // Haze / Fog: Soft flat white panel
-                    Color(0xFFFFFFFF).copy(alpha = 0.18f)
-                }
-                skycon == "WIND" -> {
-                    // Windy: Fresh flat white panel
-                    Color(0xFFFFFFFF).copy(alpha = 0.20f)
-                }
-                else -> {
-                    Color(0xFFFFFFFF).copy(alpha = 0.22f)
-                }
-            }
+        // --- 玻璃卡片配色：天气色相派生 ---
+        // 取天气渐变中段色作为「天气色相」：白天非雨雪向白色提亮 55%（亮而不白，
+        // 晴天带天蓝、风天带青、霾天带暖灰），雨雪与夜晚向黑色压暗 55%（深而有底）。
+        // 卡片因此保留天气色彩个性，且无需逐天气手工调色；文字恒白可读。
+        val hue = background[background.size / 2]
+        val precipOrSnow = skycon?.let {
+            it.contains("RAIN") || it.contains("STORM") || it.contains("SNOW")
+        } == true
+        val glass = if (isDay && !precipOrSnow) {
+            val light = lerpColor(hue, Color.White, 0.55f)
+            GlassColors(
+                tint = light.copy(alpha = 0.32f),
+                tintFallback = light.copy(alpha = 0.45f),
+                isLight = true
+            )
         } else {
-            cardTintColor = when {
-                skycon == null || skycon.contains("CLEAR") -> {
-                    // Sunny / Clear Night: Deep midnight blue flat panel
-                    Color(0xFF0B132B).copy(alpha = 0.45f)
-                }
-                skycon.contains("PARTLY_CLOUDY") -> {
-                    // Partly Cloudy Night: Deep slate flat panel
-                    Color(0xFF0F172A).copy(alpha = 0.45f)
-                }
-                skycon.contains("CLOUDY") -> {
-                    // Cloudy Night: Deep slate-blue flat panel
-                    Color(0xFF1E293B).copy(alpha = 0.45f)
-                }
-                skycon.contains("RAIN") || skycon.contains("STORM") -> {
-                    // Rainy / Stormy Night: Very deep flat slate panel
-                    Color(0xFF0F172A).copy(alpha = 0.50f)
-                }
-                skycon.contains("SNOW") -> {
-                    // Snowy Night: Flat deep slate panel
-                    Color(0xFF0F172A).copy(alpha = 0.40f)
-                }
-                skycon.contains("HAZE") || skycon == "FOG" || skycon == "DUST" || skycon == "SAND" -> {
-                    // Haze / Fog Night: Warm deep stone grey flat panel
-                    Color(0xFF1C1917).copy(alpha = 0.50f)
-                }
-                skycon == "WIND" -> {
-                    // Windy Night: Deep ocean-teal flat panel
-                    Color(0xFF042F2E).copy(alpha = 0.40f)
-                }
-                else -> {
-                    Color(0xFF0F172A).copy(alpha = 0.45f)
-                }
-            }
+            val dark = lerpColor(hue, Color.Black, 0.55f)
+            GlassColors(
+                tint = dark.copy(alpha = 0.32f),
+                tintFallback = dark.copy(alpha = 0.45f),
+                isLight = false
+            )
         }
 
         // --- Chart Colors ---
@@ -127,7 +79,7 @@ object WeatherUtils {
         return WeatherTheme(
             isDay = isDay,
             backgroundGradient = background,
-            cardTintColor = cardTintColor,
+            glass = glass,
             chartColors = chartColors,
             precipitationIconColor = precipitationIconColor
         )

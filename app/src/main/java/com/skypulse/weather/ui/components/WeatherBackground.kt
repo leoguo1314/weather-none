@@ -11,7 +11,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import com.skypulse.weather.model.DailyForecast
 import com.skypulse.weather.util.WeatherUtils
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.haze
 
+/**
+ * 天气背景容器：5 色渐变 + 粒子特效 + 实时模糊源。
+ *
+ * 结构分两层（这是玻璃卡片能正确模糊的关键）：
+ * 1. 模糊源层（haze）：仅天气渐变 + 粒子特效，被录入离屏图层；
+ * 2. 内容层：卡片等 UI，通过 [LocalGlassHazeState] 拿到状态后
+ *    以 hazeChild 采样模糊源——内容层自身不会被录入，避免自我模糊反馈。
+ *
+ * 省电模式下不提供模糊状态，卡片自动降级为增强底色（见 GlassCard）。
+ */
 @Composable
 fun WeatherBackground(
     skycon: String?,
@@ -34,26 +46,44 @@ fun WeatherBackground(
         ).value
     }
 
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colors = animatedColors,
-                    startY = 0f,
-                    endY = Float.POSITIVE_INFINITY
+    // 省电模式下关闭实时模糊（haze 在 API<31 等平台会自动使用罩色降级）
+    val powerSave = rememberPowerSaveMode()
+    val hazeState = remember { HazeState() }
+
+    Box(modifier = modifier.fillMaxSize()) {
+        // 第一层：模糊源（仅渐变 + 粒子）
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .haze(state = hazeState)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = animatedColors,
+                            startY = 0f,
+                            endY = Float.POSITIVE_INFINITY
+                        )
+                    )
+            )
+            // 粒子效果叠加层（不影响内容展示）
+            if (showParticles) {
+                WeatherEffectOverlay(
+                    skycon = skycon,
+                    isDay = isDay,
+                    wind = wind,
+                    modifier = Modifier.fillMaxSize()
                 )
-            )
-    ) {
-        // 粒子效果叠加层（不影响内容展示）
-        if (showParticles) {
-            WeatherEffectOverlay(
-                skycon = skycon,
-                isDay = isDay,
-                wind = wind,
-                modifier = Modifier.fillMaxSize()
-            )
+            }
         }
-        content()
+
+        // 第二层：内容（卡片经 LocalGlassHazeState 采样上面的模糊源）
+        CompositionLocalProvider(
+            LocalGlassHazeState provides (if (powerSave) null else hazeState)
+        ) {
+            content()
+        }
     }
 }
