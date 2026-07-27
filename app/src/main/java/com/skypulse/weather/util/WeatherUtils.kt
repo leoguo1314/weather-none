@@ -28,22 +28,22 @@ object WeatherUtils {
         val precipitationIconColor = getPrecipitationIconColor(skycon, isDay)
 
         // --- 玻璃卡片配色：天气色相派生 ---
-        // 取天气渐变中段色作为「天气色相」：白天非雨雪向白色提亮 55%（亮而不白，
-        // 晴天带天蓝、风天带青、霾天带暖灰），雨雪与夜晚向黑色压暗 55%（深而有底）。
+        // 取天气渐变中段色作为「天气色相」，先做饱和度拉伸去灰（阴天不再灰蒙蒙），
+        // 白天非雨雪向白色提亮 55%（清透有蓝天感），雨雪与夜晚向黑色压暗 55%。
         // 卡片因此保留天气色彩个性，且无需逐天气手工调色；文字恒白可读。
         val hue = background[background.size / 2]
         val precipOrSnow = skycon?.let {
             it.contains("RAIN") || it.contains("STORM") || it.contains("SNOW")
         } == true
         val glass = if (isDay && !precipOrSnow) {
-            val light = lerpColor(hue, Color.White, 0.55f)
+            val light = lerpColor(saturateColor(hue, 1.4f), Color.White, 0.55f)
             GlassColors(
                 tint = light.copy(alpha = 0.32f),
                 tintFallback = light.copy(alpha = 0.45f),
                 isLight = true
             )
         } else {
-            val dark = lerpColor(hue, Color.Black, 0.55f)
+            val dark = lerpColor(saturateColor(hue, 1.2f), Color.Black, 0.55f)
             GlassColors(
                 tint = dark.copy(alpha = 0.32f),
                 tintFallback = dark.copy(alpha = 0.45f),
@@ -165,6 +165,18 @@ object WeatherUtils {
             green = start.green + (end.green - start.green) * f,
             blue = start.blue + (end.blue - start.blue) * f,
             alpha = start.alpha + (end.alpha - start.alpha) * f
+        )
+    }
+
+    /** 饱和度拉伸：以明度中灰为支点向外扩展，factor>1 更鲜艳（去灰），<1 更灰 */
+    private fun saturateColor(color: Color, factor: Float): Color {
+        val gray = (color.red + color.green + color.blue) / 3f
+        fun ch(c: Float) = (gray + (c - gray) * factor).coerceIn(0f, 1f)
+        return Color(
+            red = ch(color.red),
+            green = ch(color.green),
+            blue = ch(color.blue),
+            alpha = color.alpha
         )
     }
 

@@ -55,12 +55,14 @@ fun SettingsScreen(
     onShowCardDetailChange: (Boolean) -> Unit,
     onShowCardSunriseSunsetChange: (Boolean) -> Unit,
     onShowCardMinutelyChange: (Boolean) -> Unit,
+    onDarkModeChange: (Boolean) -> Unit,
     isPremium: Boolean = false,
     activatedAt: Long = 0L,
     deviceId: String = "",
     onActivateCode: (String) -> ActivationResult = { _ -> ActivationResult.INVALID_CODE }
 ) {
     val context = LocalContext.current
+    val page = LocalSecondaryPageTheme.current
     var showMembershipDialog by remember { mutableStateOf(false) }
 
     val isChecking = updateState is UpdateCheckResult.Checking
@@ -105,23 +107,23 @@ fun SettingsScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(SkyPulseDesignSystem.Colors.settingsBackground)
+            .background(page.background)
             .navigationBarsPadding()
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             TopAppBar(
-                title = { Text("设置", color = IosTextPrimary, fontWeight = FontWeight.SemiBold) },
+                title = { Text("设置", color = page.textPrimary, fontWeight = FontWeight.SemiBold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         LucideIcon(
                             name = "arrow-left",
                             contentDescription = "返回",
-                            tint = IosBackArrow
+                            tint = page.backArrow
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = SkyPulseDesignSystem.Colors.settingsBackground
+                    containerColor = page.background
                 )
             )
 
@@ -149,13 +151,13 @@ fun SettingsScreen(
                                 }
                                 append("解锁所有高级功能")
                             },
-                            titleColor = IosAccentBlue,
+                            titleColor = page.accentBlue,
                             trailing = {
                                 LucideIcon(
                                     name = "key-round",
                                     contentDescription = null,
                                     size = 20.dp,
-                                    tint = IosAccentBlue
+                                    tint = page.accentBlue
                                 )
                             },
                             onClick = { showMembershipDialog = true }
@@ -164,6 +166,22 @@ fun SettingsScreen(
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
+
+                // Appearance settings（仅城市管理/预警详情/设置三页生效，主页与小组件不变）
+                SectionHeader("外观")
+                IosCard {
+                    ToggleItem(
+                        title = "浅色模式",
+                        checked = !settings.darkMode,
+                        onCheckedChange = { enabled -> if (enabled) onDarkModeChange(false) }
+                    )
+                    IosDivider()
+                    ToggleItem(
+                        title = "深色模式",
+                        checked = settings.darkMode,
+                        onCheckedChange = { enabled -> if (enabled) onDarkModeChange(true) }
+                    )
+                }
 
                 // Notification settings
                 SectionHeader("通知设置")
@@ -273,13 +291,13 @@ fun SettingsScreen(
                     // 免广告 - 所有用户均已解锁
                     SimpleItem(
                         title = "免广告",
-                        titleColor = IosTextPrimary,
+                        titleColor = page.textPrimary,
                         trailing = {
                             LucideIcon(
                                 name = "check",
                                 contentDescription = "已解锁",
                                 size = 18.dp,
-                                tint = IosAccentGreen
+                                tint = page.accentGreen
                             )
                         },
                         onClick = { }
@@ -288,13 +306,13 @@ fun SettingsScreen(
                     // 天气动效 - 所有用户均已解锁
                     SimpleItem(
                         title = "天气动效",
-                        titleColor = IosTextPrimary,
+                        titleColor = page.textPrimary,
                         trailing = {
                             LucideIcon(
                                 name = "check",
                                 contentDescription = "已解锁",
                                 size = 18.dp,
-                                tint = IosAccentGreen
+                                tint = page.accentGreen
                             )
                         },
                         onClick = { }
@@ -304,13 +322,13 @@ fun SettingsScreen(
                         // 未付费状态：显示锁定项
                         SimpleItem(
                             title = "多城市天气",
-                            titleColor = IosTextSecondary,
+                            titleColor = page.textSecondary,
                             trailing = {
                                 LucideIcon(
                                     name = "lock",
                                     contentDescription = "会员功能",
                                     size = 18.dp,
-                                    tint = IosTextSecondary.copy(alpha = 0.5f)
+                                    tint = page.textSecondary.copy(alpha = 0.5f)
                                 )
                             },
                             onClick = { showMembershipDialog = true }
@@ -318,13 +336,13 @@ fun SettingsScreen(
                         IosDivider()
                         SimpleItem(
                             title = "街道/小区级定位",
-                            titleColor = IosTextSecondary,
+                            titleColor = page.textSecondary,
                             trailing = {
                                 LucideIcon(
                                     name = "lock",
                                     contentDescription = "会员功能",
                                     size = 18.dp,
-                                    tint = IosTextSecondary.copy(alpha = 0.5f)
+                                    tint = page.textSecondary.copy(alpha = 0.5f)
                                 )
                             },
                             onClick = { showMembershipDialog = true }
@@ -332,13 +350,13 @@ fun SettingsScreen(
                         IosDivider()
                         SimpleItem(
                             title = "15日预报",
-                            titleColor = IosTextSecondary,
+                            titleColor = page.textSecondary,
                             trailing = {
                                 LucideIcon(
                                     name = "lock",
                                     contentDescription = "会员功能",
                                     size = 18.dp,
-                                    tint = IosTextSecondary.copy(alpha = 0.5f)
+                                    tint = page.textSecondary.copy(alpha = 0.5f)
                                 )
                             },
                             onClick = { showMembershipDialog = true }
@@ -346,13 +364,13 @@ fun SettingsScreen(
                         IosDivider()
                         SimpleItem(
                             title = "AI天气校准",
-                            titleColor = IosTextSecondary,
+                            titleColor = page.textSecondary,
                             trailing = {
                                 LucideIcon(
                                     name = "lock",
                                     contentDescription = "会员功能",
                                     size = 18.dp,
-                                    tint = IosTextSecondary.copy(alpha = 0.5f)
+                                    tint = page.textSecondary.copy(alpha = 0.5f)
                                 )
                             },
                             onClick = { showMembershipDialog = true }
@@ -360,13 +378,13 @@ fun SettingsScreen(
                         IosDivider()
                         SimpleItem(
                             title = "多功能小组件",
-                            titleColor = IosTextSecondary,
+                            titleColor = page.textSecondary,
                             trailing = {
                                 LucideIcon(
                                     name = "lock",
                                     contentDescription = "会员功能",
                                     size = 18.dp,
-                                    tint = IosTextSecondary.copy(alpha = 0.5f)
+                                    tint = page.textSecondary.copy(alpha = 0.5f)
                                 )
                             },
                             onClick = { showMembershipDialog = true }
@@ -375,13 +393,13 @@ fun SettingsScreen(
                         // 已付费状态：显示已解锁项
                         SimpleItem(
                             title = "多城市天气",
-                            titleColor = IosTextPrimary,
+                            titleColor = page.textPrimary,
                             trailing = {
                                 LucideIcon(
                                     name = "check",
                                     contentDescription = "已解锁",
                                     size = 18.dp,
-                                    tint = IosAccentGreen
+                                    tint = page.accentGreen
                                 )
                             },
                             onClick = { }
@@ -389,13 +407,13 @@ fun SettingsScreen(
                         IosDivider()
                         SimpleItem(
                             title = "街道/小区级定位",
-                            titleColor = IosTextPrimary,
+                            titleColor = page.textPrimary,
                             trailing = {
                                 LucideIcon(
                                     name = "check",
                                     contentDescription = "已解锁",
                                     size = 18.dp,
-                                    tint = IosAccentGreen
+                                    tint = page.accentGreen
                                 )
                             },
                             onClick = { }
@@ -403,13 +421,13 @@ fun SettingsScreen(
                         IosDivider()
                         SimpleItem(
                             title = "15日预报",
-                            titleColor = IosTextPrimary,
+                            titleColor = page.textPrimary,
                             trailing = {
                                 LucideIcon(
                                     name = "check",
                                     contentDescription = "已解锁",
                                     size = 18.dp,
-                                    tint = IosAccentGreen
+                                    tint = page.accentGreen
                                 )
                             },
                             onClick = { }
@@ -417,13 +435,13 @@ fun SettingsScreen(
                         IosDivider()
                         SimpleItem(
                             title = "AI天气校准",
-                            titleColor = IosTextPrimary,
+                            titleColor = page.textPrimary,
                             trailing = {
                                 LucideIcon(
                                     name = "check",
                                     contentDescription = "已解锁",
                                     size = 18.dp,
-                                    tint = IosAccentGreen
+                                    tint = page.accentGreen
                                 )
                             },
                             onClick = { }
@@ -431,13 +449,13 @@ fun SettingsScreen(
                         IosDivider()
                         SimpleItem(
                             title = "多功能小组件",
-                            titleColor = IosTextPrimary,
+                            titleColor = page.textPrimary,
                             trailing = {
                                 LucideIcon(
                                     name = "check",
                                     contentDescription = "已解锁",
                                     size = 18.dp,
-                                    tint = IosAccentGreen
+                                    tint = page.accentGreen
                                 )
                             },
                             onClick = { }
@@ -471,7 +489,7 @@ fun SettingsScreen(
                             Text(
                                 text = "前往下载 v${updateState.version}",
                                 style = MaterialTheme.typography.bodyLarge,
-                                color = IosAccentBlue
+                                color = page.accentBlue
                             )
                         }
                     }
@@ -490,14 +508,14 @@ fun SettingsScreen(
                                 name = "refresh-cw",
                                 contentDescription = null,
                                 size = 20.dp,
-                                tint = IosTextSecondary,
+                                tint = page.textSecondary,
                                 modifier = Modifier.rotate(rotation)
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             Text(
                                 text = "正在检查更新...",
                                 style = MaterialTheme.typography.bodyLarge,
-                                color = IosTextSecondary
+                                color = page.textSecondary
                             )
                         }
                     }
@@ -508,7 +526,7 @@ fun SettingsScreen(
                 Text(
                     text = "QQ群：758426293   邮箱：1096005725@qq.com",
                     style = MaterialTheme.typography.bodySmall,
-                    color = IosTextSecondary,
+                    color = page.textSecondary,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 24.dp, bottom = 4.dp),
@@ -518,7 +536,7 @@ fun SettingsScreen(
                 Text(
                     text = "v${BuildConfig.VERSION_NAME}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = IosTextSecondary,
+                    color = page.textSecondary,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 22.dp),
@@ -534,23 +552,24 @@ private fun IosCard(
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit
 ) {
+    val page = LocalSecondaryPageTheme.current
     Column(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = SkyPulseDesignSystem.Spacing.screenHorizontal)
             .clip(RoundedCornerShape(SkyPulseDesignSystem.Radius.settingsCard))
-            .background(SkyPulseDesignSystem.Colors.settingsSurface),
+            .background(page.cardBackground),
         content = content
     )
 }
 
- 
+
 @Composable
 private fun IosDivider() {
     HorizontalDivider(
         modifier = Modifier.padding(horizontal = 16.dp),
         thickness = SkyPulseDesignSystem.Border.hairline,
-        color = SkyPulseDesignSystem.Colors.settingsDivider
+        color = LocalSecondaryPageTheme.current.divider
     )
 }
 @Composable
@@ -558,7 +577,7 @@ private fun SectionHeader(title: String) {
     Text(
         text = title,
         style = MaterialTheme.typography.titleSmall,
-        color = IosTextSecondary,
+        color = LocalSecondaryPageTheme.current.textSecondary,
         fontSize = 13.sp,
         modifier = Modifier.padding(start = 20.dp, top = 16.dp, bottom = 8.dp)
     )
@@ -572,6 +591,7 @@ private fun ToggleItem(
     locked: Boolean = false,
     onLockedClick: (() -> Unit)? = null
 ) {
+    val page = LocalSecondaryPageTheme.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -586,7 +606,7 @@ private fun ToggleItem(
         Text(
             text = title,
             style = MaterialTheme.typography.bodyLarge,
-            color = if (locked) IosTextSecondary else IosTextPrimary,
+            color = if (locked) page.textSecondary else page.textPrimary,
             modifier = Modifier.weight(1f)
         )
         if (locked) {
@@ -594,7 +614,7 @@ private fun ToggleItem(
                 name = "lock",
                 contentDescription = "会员功能",
                 size = 18.dp,
-                tint = IosTextSecondary.copy(alpha = 0.5f)
+                tint = page.textSecondary.copy(alpha = 0.5f)
             )
             Spacer(modifier = Modifier.width(8.dp))
         }
@@ -605,14 +625,14 @@ private fun ToggleItem(
             modifier = Modifier.scale(0.8f),
             colors = SwitchDefaults.colors(
                 checkedThumbColor = Color.White,
-                checkedTrackColor = IosAccentBlue,
+                checkedTrackColor = page.accentBlue,
                 uncheckedThumbColor = Color.White,
-                uncheckedTrackColor = IosSwitchOff,
+                uncheckedTrackColor = page.switchOffTrack,
                 uncheckedBorderColor = Color.Transparent,
                 disabledCheckedThumbColor = Color.White,
-                disabledCheckedTrackColor = IosSwitchOff,
+                disabledCheckedTrackColor = page.switchOffTrack,
                 disabledUncheckedThumbColor = Color.White,
-                disabledUncheckedTrackColor = IosSwitchOff
+                disabledUncheckedTrackColor = page.switchOffTrack
             )
         )
     }
@@ -623,10 +643,12 @@ private fun ToggleItem(
 private fun SimpleItem(
     title: String,
     subtitle: AnnotatedString? = null,
-    titleColor: Color = IosTextPrimary,
+    titleColor: Color = Color.Unspecified,
     trailing: (@Composable () -> Unit)? = null,
     onClick: () -> Unit
 ) {
+    val page = LocalSecondaryPageTheme.current
+    val resolvedTitleColor = if (titleColor == Color.Unspecified) page.textPrimary else titleColor
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -639,14 +661,14 @@ private fun SimpleItem(
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyLarge,
-                color = titleColor
+                color = resolvedTitleColor
             )
             if (subtitle != null) {
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
-                    color = IosTextSecondary,
+                    color = page.textSecondary,
                     fontSize = 12.sp,
                     lineHeight = 16.sp
                 )

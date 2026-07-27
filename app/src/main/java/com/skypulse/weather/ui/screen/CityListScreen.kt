@@ -47,28 +47,29 @@ fun CityListScreen(
 ) {
     var searchQuery by remember { mutableStateOf("") }
     val focusManager = LocalFocusManager.current
+    val page = LocalSecondaryPageTheme.current
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(SkyPulseDesignSystem.Colors.settingsBackground)
+            .background(page.background)
             .statusBarsPadding()
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             // Top nav bar
             if (onBack != null) {
                 TopAppBar(
-                    title = { Text("城市管理", color = IosTextPrimary) },
+                    title = { Text("城市管理", color = page.textPrimary) },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
                             LucideIcon(
                                 name = "arrow-left",
                                 contentDescription = "返回",
-                                tint = IosBackArrow
+                                tint = page.backArrow
                             )
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = SkyPulseDesignSystem.Colors.settingsBackground
+                        containerColor = page.background
                     )
                 )
             }
@@ -85,10 +86,10 @@ fun CityListScreen(
                         .fillMaxWidth()
                         .height(SkyPulseDesignSystem.TouchTarget.default)
                         .clip(RoundedCornerShape(SkyPulseDesignSystem.Radius.pill))
-                        .background(SkyPulseDesignSystem.Colors.settingsSurface),
-                    textStyle = MaterialTheme.typography.bodyMedium.copy(color = IosTextPrimary, fontSize = 18.sp),
+                        .background(page.cardBackground),
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(color = page.textPrimary, fontSize = 18.sp),
                     singleLine = true,
-                    cursorBrush = SolidColor(IosAccentBlue),
+                    cursorBrush = SolidColor(page.accentBlue),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                     keyboardActions = KeyboardActions(
                         onSearch = {
@@ -106,7 +107,7 @@ fun CityListScreen(
                             LucideIcon(
                                 name = "search",
                                 contentDescription = null,
-                                tint = IosTextSecondary,
+                                tint = page.textSecondary,
                                 size = 22.dp
                             )
                             Spacer(modifier = Modifier.width(8.dp))
@@ -114,7 +115,7 @@ fun CityListScreen(
                                 if (searchQuery.isEmpty()) {
                                     Text(
                                         text = "搜索位置",
-                                        color = IosTextSecondary,
+                                        color = page.textSecondary,
                                         style = MaterialTheme.typography.bodyMedium.copy(fontSize = 18.sp)
                                     )
                                 }
@@ -132,7 +133,7 @@ fun CityListScreen(
                                     LucideIcon(
                                         name = "x",
                                         contentDescription = "清除",
-                                        tint = IosTextSecondary,
+                                        tint = page.textSecondary,
                                         size = 24.dp
                                     )
                                 }
@@ -159,7 +160,7 @@ fun CityListScreen(
                                 CircularProgressIndicator(
                                     modifier = Modifier.size(24.dp),
                                     strokeWidth = 2.dp,
-                                    color = IosTextSecondary
+                                    color = page.textSecondary
                                 )
                             }
                         }
@@ -168,7 +169,7 @@ fun CityListScreen(
                             Text(
                                 text = "未找到匹配的城市",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = IosTextSecondary,
+                                color = page.textSecondary,
                                 modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
                                 textAlign = TextAlign.Center
                             )
@@ -188,7 +189,7 @@ fun CityListScreen(
                             if (result != searchResults.last()) {
                                 HorizontalDivider(
                                     modifier = Modifier.padding(start = 16.dp),
-                                    color = IosDividerColor
+                                    color = page.divider
                                 )
                             }
                         }

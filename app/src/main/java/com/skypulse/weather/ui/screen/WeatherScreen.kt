@@ -30,6 +30,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -192,7 +193,8 @@ fun WeatherScreen(
         viewModel.navigateBack()
     }
 
-    SetLightStatusBarEffect(lightStatusBar = currentScreen != AppScreen.CityDetail)
+    // 主页沉浸天空恒用浅色图标；次级页面跟随深浅色主题（浅色主题深色图标，深色主题浅色图标）
+    SetLightStatusBarEffect(lightStatusBar = currentScreen != AppScreen.CityDetail && !settings.darkMode)
 
     if (!onboardingReady) {
         LoadingShimmer(
@@ -212,11 +214,17 @@ fun WeatherScreen(
         return
     }
 
-    CompositionLocalProvider(LocalWeatherTheme provides weatherTheme) {
+    // 次级页面（城市管理/预警详情/设置）深浅色配色，主页与小组件不受影响
+    val secondaryPageColors = if (settings.darkMode) SecondaryPageDarkColors else SecondaryPageLightColors
+
+    CompositionLocalProvider(
+        LocalWeatherTheme provides weatherTheme,
+        LocalSecondaryPageTheme provides secondaryPageColors
+    ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(currentScreen.screenBackgroundBrush(weatherTheme))
+                .background(currentScreen.screenBackgroundBrush(weatherTheme, secondaryPageColors.background))
         ) {
             AnimatedContent(
                 targetState = currentScreen,
@@ -454,6 +462,7 @@ fun WeatherScreen(
                     onShowCardDetailChange = { settingsViewModel.setShowCardDetail(it) },
                     onShowCardSunriseSunsetChange = { settingsViewModel.setShowCardSunriseSunset(it) },
                     onShowCardMinutelyChange = { settingsViewModel.setShowCardMinutely(it) },
+                    onDarkModeChange = { settingsViewModel.setDarkMode(it) },
                     isPremium = isPremium,
                     activatedAt = settingsViewModel.getActivatedAt(),
                     deviceId = settingsViewModel.getDeviceId(),
@@ -510,12 +519,12 @@ private fun AnimatedContentTransitionScope<AppScreen>.skyPulseScreenTransition()
         SizeTransform(clip = true)
 }
 
-private fun AppScreen.screenBackgroundBrush(weatherTheme: WeatherTheme): Brush {
+private fun AppScreen.screenBackgroundBrush(weatherTheme: WeatherTheme, secondaryBackground: Color): Brush {
     return when (this) {
         AppScreen.CityDetail -> Brush.verticalGradient(weatherTheme.backgroundGradient)
         AppScreen.CityList,
         AppScreen.Settings,
-        AppScreen.AlertDetail -> Brush.verticalGradient(listOf(IosSettingsBg, IosSettingsBg))
+        AppScreen.AlertDetail -> Brush.verticalGradient(listOf(secondaryBackground, secondaryBackground))
     }
 }
 

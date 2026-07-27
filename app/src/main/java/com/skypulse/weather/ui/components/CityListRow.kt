@@ -32,8 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.skypulse.weather.model.City
 import com.skypulse.weather.model.WeatherResponse
-import com.skypulse.weather.ui.theme.IosTextPrimary
-import com.skypulse.weather.ui.theme.IosTextSecondary
+import com.skypulse.weather.ui.theme.LocalSecondaryPageTheme
 import com.skypulse.weather.ui.theme.SkyPulseDesignSystem
 import com.skypulse.weather.util.WeatherUtils
 import kotlin.math.roundToInt
@@ -226,21 +225,22 @@ fun CitySearchResultRow(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            val page = LocalSecondaryPageTheme.current
             Text(
                 text = name,
                 style = MaterialTheme.typography.bodyLarge,
-                color = IosTextPrimary
+                color = page.textPrimary
             )
             if (district.isNotBlank()) {
                 Text(
                     text = "，",
                     style = MaterialTheme.typography.bodyLarge,
-                    color = IosTextSecondary
+                    color = page.textSecondary
                 )
                 Text(
                     text = district,
                     style = MaterialTheme.typography.bodyLarge,
-                    color = IosTextSecondary
+                    color = page.textSecondary
                 )
             }
         }

@@ -35,9 +35,15 @@ fun SetLightStatusBarEffect(lightStatusBar: Boolean) {
     DisposableEffect(lightStatusBar) {
         val window = (view.context as Activity).window
         val controller = WindowCompat.getInsetsController(window, view)
-        val previous = controller.isAppearanceLightStatusBars
+        val previousStatus = controller.isAppearanceLightStatusBars
+        val previousNav = controller.isAppearanceLightNavigationBars
+        // 状态栏与导航条同步：浅色页面用深色图标，深色页面/沉浸主页用浅色图标
         controller.isAppearanceLightStatusBars = lightStatusBar
-        onDispose { controller.isAppearanceLightStatusBars = previous }
+        controller.isAppearanceLightNavigationBars = lightStatusBar
+        onDispose {
+            controller.isAppearanceLightStatusBars = previousStatus
+            controller.isAppearanceLightNavigationBars = previousNav
+        }
     }
 }
 

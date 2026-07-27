@@ -17,12 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.skypulse.weather.model.AlertContent
 import com.skypulse.weather.model.sortedByPublishTimeDescending
-import com.skypulse.weather.ui.theme.IosCardBg
-import com.skypulse.weather.ui.theme.IosSettingsBg
-import com.skypulse.weather.ui.theme.IosTextPrimary
-import com.skypulse.weather.ui.theme.IosTextSecondary
-import com.skypulse.weather.ui.theme.IosBackArrow
-import com.skypulse.weather.ui.theme.IosDividerColor
+import com.skypulse.weather.ui.theme.LocalSecondaryPageTheme
 
 
 @Composable
@@ -32,22 +27,23 @@ internal fun AlertDetailScreen(
     initialSelectedIndex: Int = 0,
     onBack: () -> Unit = {}
 ) {
+    val page = LocalSecondaryPageTheme.current
     val sortedAlerts = remember(alerts) {
         alerts.sortedByPublishTimeDescending()
     }
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(IosSettingsBg)
+            .background(page.background)
     ) {
         TopAppBar(
-            title = { Text("预警详情", color = IosTextPrimary) },
+            title = { Text("预警详情", color = page.textPrimary) },
             navigationIcon = {
                 IconButton(onClick = onBack) {
                     LucideIcon(
                         name = "arrow-left",
                         contentDescription = "返回",
-                        tint = IosBackArrow
+                        tint = page.backArrow
                     )
                 }
             },
@@ -61,7 +57,7 @@ internal fun AlertDetailScreen(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                Text(text = "暂无预警信息", color = IosTextSecondary)
+                Text(text = "暂无预警信息", color = page.textSecondary)
             }
         } else {
             val safeInitialIndex = remember(alerts, initialSelectedIndex) {
@@ -83,18 +79,23 @@ internal fun AlertDetailScreen(
                         ?.trim()
                         ?.ifBlank { null }
 
-                    // Glass-style card matching main page GlassCard
+                    // 次级页面主题卡片（浅色 iOS 风 / 深色 iOS 风）
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp, vertical = 8.dp)
                             .clip(RoundedCornerShape(14.dp))
-                            .background(IosCardBg)
+                            .background(page.cardBackground)
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             if (!title.isNullOrBlank()) {
-                                val alertColor = remember(alert) {
-                                    alertLevelColor(alert.level, alert.title, fallback = IosTextPrimary)
+                                val alertColor = remember(alert, page.isDark) {
+                                    alertLevelColor(
+                                        alert.level,
+                                        alert.title,
+                                        fallback = page.textPrimary,
+                                        whiteAlert = if (page.isDark) Color.White else Color.Black
+                                    )
                                 }
                                 Text(
                                     text = title,
@@ -109,7 +110,7 @@ internal fun AlertDetailScreen(
                                 Text(
                                     text = alert.description,
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = IosTextPrimary
+                                    color = page.textPrimary
                                 )
                             }
                         }

@@ -9,7 +9,8 @@ import com.skypulse.weather.ui.theme.AlertYellow
 internal fun alertLevelColor(
     level: String?,
     title: String? = null,
-    fallback: Color = AlertYellow
+    fallback: Color = AlertYellow,
+    whiteAlert: Color = Color.Black
 ): Color {
     val signal = listOfNotNull(level, title)
         .joinToString(separator = " ")
@@ -20,7 +21,7 @@ internal fun alertLevelColor(
         signal.contains("橙") || signal.contains("orange") -> AlertOrange
         signal.contains("黄") || signal.contains("yellow") -> AlertYellow
         signal.contains("蓝") || signal.contains("blue") -> AlertBlue
-        signal.contains("白") || signal.contains("white") -> Color.Black
+        signal.contains("白") || signal.contains("white") -> whiteAlert
         else -> fallback
     }
 }
