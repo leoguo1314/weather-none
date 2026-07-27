@@ -502,7 +502,7 @@ private fun ClearNightEffect(
                 val headY = m.startY * size.height + m.dirY * m.speed * elapsed
                 if (fade > 0f && headX >= -50f && headX <= size.width + 50f && headY <= size.height + 50f) {
                     val tailLength = m.speed * 0.16f
-                    val angle = atan2(m.dirX, m.dirY)
+                    val angle = atan2(-m.dirX, m.dirY)
                     withTransform({
                         rotate(degrees = angle * RadToDeg, pivot = Offset(headX, headY))
                     }) {
