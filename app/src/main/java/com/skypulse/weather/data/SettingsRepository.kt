@@ -10,6 +10,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import javax.inject.Inject
 import javax.inject.Singleton
 
+enum class ThemeMode { LIGHT, DARK, SYSTEM }
+
 data class WeatherSettings(
     val rainAlert: Boolean = true,
     val warningAlert: Boolean = true,
@@ -23,7 +25,7 @@ data class WeatherSettings(
     val showCardDetail: Boolean = true,
     val showCardSunriseSunset: Boolean = true,
     val showCardMinutely: Boolean = true,
-    val darkMode: Boolean = false
+    val themeMode: ThemeMode = ThemeMode.SYSTEM
 )
 
 @Singleton
@@ -58,7 +60,10 @@ class SettingsRepository @Inject constructor(
     fun setShowCardDetail(enabled: Boolean) = updateBoolean(KEY_SHOW_CARD_DETAIL, enabled)
     fun setShowCardSunriseSunset(enabled: Boolean) = updateBoolean(KEY_SHOW_CARD_SUNRISE_SUNSET, enabled)
     fun setShowCardMinutely(enabled: Boolean) = updateBoolean(KEY_SHOW_CARD_MINUTELY, enabled)
-    fun setDarkMode(enabled: Boolean) = updateBoolean(KEY_DARK_MODE, enabled)
+    fun setThemeMode(mode: ThemeMode) {
+        prefs.edit().putString(KEY_THEME_MODE, mode.name).apply()
+        _settings.value = readSettings()
+    }
 
     private fun updateBoolean(key: String, enabled: Boolean) {
         prefs.edit().putBoolean(key, enabled).apply()
@@ -78,7 +83,9 @@ class SettingsRepository @Inject constructor(
         showCardDetail = prefs.getBoolean(KEY_SHOW_CARD_DETAIL, true),
         showCardSunriseSunset = prefs.getBoolean(KEY_SHOW_CARD_SUNRISE_SUNSET, true),
         showCardMinutely = prefs.getBoolean(KEY_SHOW_CARD_MINUTELY, true),
-        darkMode = prefs.getBoolean(KEY_DARK_MODE, false)
+        themeMode = try {
+            ThemeMode.valueOf(prefs.getString(KEY_THEME_MODE, ThemeMode.SYSTEM.name) ?: ThemeMode.SYSTEM.name)
+        } catch (_: Exception) { ThemeMode.SYSTEM }
     )
 
     companion object {
@@ -94,6 +101,6 @@ class SettingsRepository @Inject constructor(
         private const val KEY_SHOW_CARD_DETAIL = "show_card_detail"
         private const val KEY_SHOW_CARD_SUNRISE_SUNSET = "show_card_sunrise_sunset"
         private const val KEY_SHOW_CARD_MINUTELY = "show_card_minutely"
-        private const val KEY_DARK_MODE = "dark_mode"
+        private const val KEY_THEME_MODE = "theme_mode"
     }
 }

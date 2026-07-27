@@ -11,6 +11,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.Image
@@ -45,6 +46,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.skypulse.weather.data.ThemeMode
 import com.skypulse.weather.data.WeatherSettings
 import com.skypulse.weather.domain.CitySelectionPolicy
 import com.skypulse.weather.model.sortedByPublishTimeDescending
@@ -194,7 +196,13 @@ fun WeatherScreen(
     }
 
     // 主页沉浸天空恒用浅色图标；次级页面跟随深浅色主题（浅色主题深色图标，深色主题浅色图标）
-    SetLightStatusBarEffect(lightStatusBar = currentScreen != AppScreen.CityDetail && !settings.darkMode)
+    val isSystemDark = isSystemInDarkTheme()
+    val resolvedDark = when (settings.themeMode) {
+        ThemeMode.DARK -> true
+        ThemeMode.LIGHT -> false
+        ThemeMode.SYSTEM -> isSystemDark
+    }
+    SetLightStatusBarEffect(lightStatusBar = currentScreen != AppScreen.CityDetail && !resolvedDark)
 
     if (!onboardingReady) {
         LoadingShimmer(
@@ -215,7 +223,7 @@ fun WeatherScreen(
     }
 
     // 次级页面（城市管理/预警详情/设置）深浅色配色，主页与小组件不受影响
-    val secondaryPageColors = if (settings.darkMode) SecondaryPageDarkColors else SecondaryPageLightColors
+    val secondaryPageColors = if (resolvedDark) SecondaryPageDarkColors else SecondaryPageLightColors
 
     CompositionLocalProvider(
         LocalWeatherTheme provides weatherTheme,
@@ -462,7 +470,7 @@ fun WeatherScreen(
                     onShowCardDetailChange = { settingsViewModel.setShowCardDetail(it) },
                     onShowCardSunriseSunsetChange = { settingsViewModel.setShowCardSunriseSunset(it) },
                     onShowCardMinutelyChange = { settingsViewModel.setShowCardMinutely(it) },
-                    onDarkModeChange = { settingsViewModel.setDarkMode(it) },
+                    onThemeModeChange = { settingsViewModel.setThemeMode(it) },
                     isPremium = isPremium,
                     activatedAt = settingsViewModel.getActivatedAt(),
                     deviceId = settingsViewModel.getDeviceId(),

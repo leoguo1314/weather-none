@@ -2,10 +2,12 @@ package com.skypulse.weather.ui.screen
 
 import android.content.Intent
 import android.widget.Toast
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import com.skypulse.weather.ui.components.LucideIcon
@@ -17,6 +19,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -28,6 +31,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import com.skypulse.weather.BuildConfig
 import com.skypulse.weather.data.ActivationResult
+import com.skypulse.weather.data.ThemeMode
 import com.skypulse.weather.data.WeatherSettings
 import com.skypulse.weather.ui.components.MembershipDialog
 import com.skypulse.weather.ui.components.VipBadge
@@ -55,7 +59,7 @@ fun SettingsScreen(
     onShowCardDetailChange: (Boolean) -> Unit,
     onShowCardSunriseSunsetChange: (Boolean) -> Unit,
     onShowCardMinutelyChange: (Boolean) -> Unit,
-    onDarkModeChange: (Boolean) -> Unit,
+    onThemeModeChange: (ThemeMode) -> Unit,
     isPremium: Boolean = false,
     activatedAt: Long = 0L,
     deviceId: String = "",
@@ -170,18 +174,26 @@ fun SettingsScreen(
                 // Appearance settings（仅城市管理/预警详情/设置三页生效，主页与小组件不变）
                 SectionHeader("外观")
                 IosCard {
-                    ToggleItem(
-                        title = "浅色模式",
-                        checked = !settings.darkMode,
-                        onCheckedChange = { enabled -> if (enabled) onDarkModeChange(false) }
+                    RadioItem(
+                        title = "浅色",
+                        selected = settings.themeMode == ThemeMode.LIGHT,
+                        onClick = { onThemeModeChange(ThemeMode.LIGHT) }
                     )
                     IosDivider()
-                    ToggleItem(
-                        title = "深色模式",
-                        checked = settings.darkMode,
-                        onCheckedChange = { enabled -> if (enabled) onDarkModeChange(true) }
+                    RadioItem(
+                        title = "深色",
+                        selected = settings.themeMode == ThemeMode.DARK,
+                        onClick = { onThemeModeChange(ThemeMode.DARK) }
+                    )
+                    IosDivider()
+                    RadioItem(
+                        title = "跟随系统",
+                        selected = settings.themeMode == ThemeMode.SYSTEM,
+                        onClick = { onThemeModeChange(ThemeMode.SYSTEM) }
                     )
                 }
+
+                Spacer(modifier = Modifier.height(8.dp))
 
                 // Notification settings
                 SectionHeader("通知设置")
@@ -635,6 +647,63 @@ private fun ToggleItem(
                 disabledUncheckedTrackColor = page.switchOffTrack
             )
         )
+    }
+}
+
+
+@Composable
+private fun RadioItem(
+    title: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    val page = LocalSecondaryPageTheme.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(SkyPulseDesignSystem.TouchTarget.listRow)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.bodyLarge,
+            color = page.textPrimary,
+            modifier = Modifier.weight(1f)
+        )
+        // 圆形单选勾选框
+        Box(
+            modifier = Modifier
+                .size(22.dp)
+                .clip(CircleShape)
+                .background(
+                    if (selected) page.accentBlue else Color.Transparent,
+                    shape = CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            // 外圈描边
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val strokeWidth = 2.dp.toPx()
+                val radius = (size.minDimension - strokeWidth) / 2f
+                drawCircle(
+                    color = if (selected) page.accentBlue else page.textSecondary.copy(alpha = 0.6f),
+                    radius = radius,
+                    center = this.center,
+                    style = Stroke(width = strokeWidth)
+                )
+            }
+            // 选中时内部填充圆点
+            if (selected) {
+                Box(
+                    modifier = Modifier
+                        .size(12.dp)
+                        .clip(CircleShape)
+                        .background(Color.White)
+                )
+            }
+        }
     }
 }
 

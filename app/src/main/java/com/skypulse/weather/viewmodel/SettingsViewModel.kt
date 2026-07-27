@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import com.skypulse.weather.data.ActivationResult
 import com.skypulse.weather.data.MembershipRepository
 import com.skypulse.weather.data.SettingsRepository
+import com.skypulse.weather.data.ThemeMode
 import com.skypulse.weather.data.WeatherSettings
 import com.skypulse.weather.notification.WeatherNotificationScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -58,7 +59,7 @@ class SettingsViewModel @Inject constructor(
     fun setShowCardDetail(enabled: Boolean) = settingsRepository.setShowCardDetail(enabled)
     fun setShowCardSunriseSunset(enabled: Boolean) = settingsRepository.setShowCardSunriseSunset(enabled)
     fun setShowCardMinutely(enabled: Boolean) = settingsRepository.setShowCardMinutely(enabled)
-    fun setDarkMode(enabled: Boolean) = settingsRepository.setDarkMode(enabled)
+    fun setThemeMode(mode: ThemeMode) = settingsRepository.setThemeMode(mode)
 
     private fun updateAlertSetting(update: () -> Unit) {
         update()
