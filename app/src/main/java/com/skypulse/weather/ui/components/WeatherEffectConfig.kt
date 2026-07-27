@@ -21,26 +21,32 @@ fun parseWeatherIntensity(skycon: String?): WeatherIntensity {
     return when (skycon) {
         // 雨天强度
         "LIGHT_RAIN" -> WeatherIntensity(
-            particleCount = 0.5f,
-            speed = 0.7f,
-            size = 0.8f,
-            alpha = 0.6f,
-            thickness = 0.7f
+            particleCount = 0.7f,
+            speed = 0.75f,
+            size = 0.85f,
+            alpha = 0.72f,
+            thickness = 0.78f
         )
-        "MODERATE_RAIN" -> WeatherIntensity()  // 默认值
+        "MODERATE_RAIN" -> WeatherIntensity(
+            particleCount = 1f,
+            speed = 1f,
+            size = 1f,
+            alpha = 0.85f,
+            thickness = 1f
+        )
         "HEAVY_RAIN" -> WeatherIntensity(
-            particleCount = 1.5f,
-            speed = 1.3f,
+            particleCount = 1.8f,
+            speed = 1.35f,
             size = 1.2f,
-            alpha = 0.9f,
-            thickness = 1.3f
+            alpha = 0.95f,
+            thickness = 1.35f
         )
         "STORM_RAIN" -> WeatherIntensity(
-            particleCount = 2f,
-            speed = 1.6f,
+            particleCount = 2.5f,
+            speed = 1.7f,
             size = 1.4f,
             alpha = 1f,
-            thickness = 1.5f
+            thickness = 1.6f
         )
 
         // 雪天强度
@@ -66,11 +72,11 @@ fun parseWeatherIntensity(skycon: String?): WeatherIntensity {
 
         // 雷阵雨
         "THUNDER_SHOWER" -> WeatherIntensity(
-            particleCount = 1.5f,
-            speed = 1.4f,
-            size = 1.1f,
-            alpha = 0.9f,
-            thickness = 1.2f
+            particleCount = 1.8f,
+            speed = 1.45f,
+            size = 1.15f,
+            alpha = 0.95f,
+            thickness = 1.3f
         )
 
         // 其他天气类型保持默认

@@ -1,7 +1,6 @@
 package com.skypulse.weather.ui.components
 
 import android.graphics.Bitmap
-import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.RadialGradient
 import android.graphics.Shader
@@ -13,6 +12,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /**
@@ -34,8 +34,8 @@ import kotlin.math.roundToInt
 object ParticleSprites {
 
     private const val GlowSize = 128
-    private const val StreakWidth = 16
-    private const val StreakHeight = 128
+    private const val StreakWidth = 32
+    private const val StreakHeight = 256
 
     private val whiteCoreCache = HashMap<String, ImageBitmap>()
     private val tintCache = HashMap<Color, ColorFilter>()
@@ -147,22 +147,35 @@ object ParticleSprites {
         return bitmap.asImageBitmap()
     }
 
+    /**
+     * 烘焙纺锤形雨丝精灵：垂直渐变 + 横向衰减，形成滴状轮廓
+     * 底部（head）最宽最亮，顶部（tail）收窄变暗
+     */
     private fun bakeStreak(topAlpha: Float, midAlpha: Float, bottomAlpha: Float): ImageBitmap {
-        val bitmap = Bitmap.createBitmap(StreakWidth, StreakHeight, Bitmap.Config.ARGB_8888)
-        val canvas = android.graphics.Canvas(bitmap)
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            shader = LinearGradient(
-                0f, 0f, 0f, StreakHeight.toFloat(),
-                intArrayOf(
-                    Color.White.copy(alpha = topAlpha).toArgb(),
-                    Color.White.copy(alpha = midAlpha).toArgb(),
-                    Color.White.copy(alpha = bottomAlpha).toArgb()
-                ),
-                null,
-                Shader.TileMode.CLAMP
-            )
+        val w = StreakWidth
+        val h = StreakHeight
+        val bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        val pixels = IntArray(w * h)
+        val halfW = w / 2f
+        for (y in 0 until h) {
+            val t = y.toFloat() / h // 0=top(tail), 1=bottom(head)
+            // 垂直 alpha 渐变
+            val vertAlpha = when {
+                t < 0.5f -> topAlpha + (midAlpha - topAlpha) * t * 2f
+                else -> midAlpha + (bottomAlpha - midAlpha) * (t - 0.5f) * 2f
+            }
+            // 纺锤轮廓：顶部窄(30%) → 底部宽(100%)
+            val radiusFrac = 0.30f + 0.70f * t
+            val radiusAtY = halfW * radiusFrac
+            for (x in 0 until w) {
+                val dx = (x + 0.5f - halfW) / radiusAtY
+                // 柔和横向衰减（幂次 <2 产生柔和光晕感）
+                val horizAlpha = (1f - abs(dx).coerceAtMost(1f).let { it * it * it }).coerceIn(0f, 1f)
+                val a = (vertAlpha * horizAlpha * 255).roundToInt().coerceIn(0, 255)
+                pixels[y * w + x] = (a shl 24) or 0x00FFFFFF
+            }
         }
-        canvas.drawRect(0f, 0f, StreakWidth.toFloat(), StreakHeight.toFloat(), paint)
+        bitmap.setPixels(pixels, 0, w, 0, 0, w, h)
         return bitmap.asImageBitmap()
     }
 }

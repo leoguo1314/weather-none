@@ -549,10 +549,10 @@ private fun RainEffect(
         val areaHeight = constraints.maxHeight.toFloat()
 
         // 根据强度动态调整粒子数量（4层）
-        val farCount = (30 * intensity.particleCount).toInt().coerceIn(10, 60)
-        val midFarCount = (35 * intensity.particleCount).toInt().coerceIn(15, 70)
-        val midNearCount = (30 * intensity.particleCount).toInt().coerceIn(10, 60)
-        val nearCount = (25 * intensity.particleCount).toInt().coerceIn(10, 50)
+        val farCount = (40 * intensity.particleCount).toInt().coerceIn(15, 80)
+        val midFarCount = (50 * intensity.particleCount).toInt().coerceIn(20, 100)
+        val midNearCount = (40 * intensity.particleCount).toInt().coerceIn(15, 80)
+        val nearCount = (35 * intensity.particleCount).toInt().coerceIn(12, 60)
 
         // 4层雨滴数据
         val raindropsFar = remember(areaWidth, areaHeight, intensity.particleCount) { generateRainLayer(farCount, areaWidth, areaHeight, isFar = true) }
@@ -600,8 +600,8 @@ private fun RainEffect(
 
                 drawRainStreak(
                     x = x, y = y, length = drop.length,
-                    width = drop.thickness * thicknessMultiplier * 0.4f,
-                    alpha = drop.alpha * alphaMultiplier * 0.3f,
+                    width = drop.thickness * thicknessMultiplier * 0.5f,
+                    alpha = drop.alpha * alphaMultiplier * 0.42f,
                     angle = angle, hard = false
                 )
             }
@@ -617,8 +617,8 @@ private fun RainEffect(
 
                 drawRainStreak(
                     x = x, y = y, length = drop.length,
-                    width = drop.thickness * thicknessMultiplier * 0.6f,
-                    alpha = drop.alpha * alphaMultiplier * 0.5f,
+                    width = drop.thickness * thicknessMultiplier * 0.7f,
+                    alpha = drop.alpha * alphaMultiplier * 0.62f,
                     angle = angle, hard = false
                 )
             }
@@ -634,15 +634,15 @@ private fun RainEffect(
 
                 drawRainStreak(
                     x = x, y = y, length = drop.length,
-                    width = drop.thickness * thicknessMultiplier * 0.8f,
-                    alpha = drop.alpha * alphaMultiplier * 0.7f,
+                    width = drop.thickness * thicknessMultiplier * 0.85f,
+                    alpha = drop.alpha * alphaMultiplier * 0.8f,
                     angle = angle, hard = false
                 )
 
-                // 雨滴头部高光（跟随倾斜后的落点）
+                // 雨滴头部高光（纺锤体底部本身已高亮，此点缀增强立体感）
                 drawCircle(
-                    color = Color.White.copy(alpha = drop.alpha * alphaMultiplier * 0.5f),
-                    radius = drop.thickness * thicknessMultiplier * 0.5f,
+                    color = Color.White.copy(alpha = drop.alpha * alphaMultiplier * 0.45f),
+                    radius = drop.thickness * thicknessMultiplier * 0.55f,
                     center = Offset(x + sin(angle) * drop.length, y + cos(angle) * drop.length)
                 )
             }
@@ -659,15 +659,15 @@ private fun RainEffect(
                 // 雨滴主体
                 drawRainStreak(
                     x = x, y = y, length = drop.length,
-                    width = drop.thickness * thicknessMultiplier,
-                    alpha = drop.alpha * alphaMultiplier,
+                    width = drop.thickness * thicknessMultiplier * 1.1f,
+                    alpha = drop.alpha * alphaMultiplier * 0.95f,
                     angle = angle, hard = true
                 )
 
                 // 雨滴头部高光（更明显）
                 drawCircle(
-                    color = Color.White.copy(alpha = drop.alpha * alphaMultiplier * 0.8f),
-                    radius = drop.thickness * thicknessMultiplier * 0.8f,
+                    color = Color.White.copy(alpha = drop.alpha * alphaMultiplier * 0.7f),
+                    radius = drop.thickness * thicknessMultiplier * 0.85f,
                     center = Offset(x + sin(angle) * drop.length, y + cos(angle) * drop.length)
                 )
             }
@@ -705,9 +705,9 @@ private fun generateRainLayer(count: Int, width: Float, height: Float, isFar: Bo
             x = Random.nextFloat() * width,
             y = Random.nextFloat() * height,
             alpha = if (isFar) {
-                Random.nextFloat() * 0.15f + 0.05f  // 远景更淡
+                Random.nextFloat() * 0.18f + 0.08f  // 远景更淡: 0.08-0.26
             } else {
-                Random.nextFloat() * 0.3f + 0.2f
+                Random.nextFloat() * 0.35f + 0.3f   // 非远景: 0.3-0.65
             },
             size = if (isFar) {
                 Random.nextFloat() * 1f + 0.3f  // 远景更小
@@ -717,14 +717,14 @@ private fun generateRainLayer(count: Int, width: Float, height: Float, isFar: Bo
             speedX = Random.nextFloat() * 1.5f - 0.3f,
             speedY = speed,
             length = if (isFar) {
-                Random.nextFloat() * 12f + 8f  // 远景更短
+                Random.nextFloat() * 14f + 10f  // 远景: 10-24
             } else {
-                Random.nextFloat() * 22f + 15f
+                Random.nextFloat() * 28f + 18f   // 非远景: 18-46
             },
             thickness = if (isFar) {
-                Random.nextFloat() * 0.6f + 0.3f  // 远景更细
+                Random.nextFloat() * 0.7f + 0.4f  // 远景: 0.4-1.1
             } else {
-                Random.nextFloat() * 1.2f + 0.6f
+                Random.nextFloat() * 1.5f + 0.8f   // 非远景: 0.8-2.3
             }
         )
     }
@@ -1057,7 +1057,7 @@ private fun ThunderShowerEffect(
         val areaHeight = constraints.maxHeight.toFloat()
 
         // 根据强度动态调整粒子数量
-        val rainCount = (100 * intensity.particleCount).toInt().coerceIn(50, 200)
+        val rainCount = (130 * intensity.particleCount).toInt().coerceIn(60, 250)
         val raindrops = remember(areaWidth, areaHeight, intensity.particleCount) { generateRaindrops(rainCount, areaWidth, areaHeight) }
         val bolts = remember { List(3) { generateLightningBolt() } }
         var animationTime by remember { mutableStateOf(0f) }
@@ -1115,14 +1115,14 @@ private fun ThunderShowerEffect(
                 // 雨滴垂直下落（有风时按倾斜角绘制）
                 drawRainStreak(
                     x = x, y = y, length = drop.length,
-                    width = drop.thickness * thicknessMultiplier,
-                    alpha = drop.alpha * alphaMultiplier,
+                    width = drop.thickness * thicknessMultiplier * 1.1f,
+                    alpha = drop.alpha * alphaMultiplier * 0.95f,
                     angle = angle, hard = true
                 )
 
                 drawCircle(
-                    color = Color.White.copy(alpha = drop.alpha * alphaMultiplier * 0.8f),
-                    radius = drop.thickness * thicknessMultiplier * 0.8f,
+                    color = Color.White.copy(alpha = drop.alpha * alphaMultiplier * 0.7f),
+                    radius = drop.thickness * thicknessMultiplier * 0.85f,
                     center = Offset(x + sin(angle) * drop.length, y + cos(angle) * drop.length)
                 )
             }
@@ -1215,8 +1215,8 @@ private fun SleetEffect(
         val areaHeight = constraints.maxHeight.toFloat()
 
         // 根据强度动态调整粒子数量
-        val rainCount = (50 * intensity.particleCount).toInt().coerceIn(25, 100)
-        val snowCount = (25 * intensity.particleCount).toInt().coerceIn(10, 60)
+        val rainCount = (70 * intensity.particleCount).toInt().coerceIn(30, 130)
+        val snowCount = (30 * intensity.particleCount).toInt().coerceIn(12, 70)
 
         val raindrops = remember(areaWidth, areaHeight, intensity.particleCount) { generateRaindrops(rainCount, areaWidth, areaHeight) }
         val snowflakes = remember(areaWidth, areaHeight, intensity.particleCount) { generateSnowflakes(snowCount, areaWidth, areaHeight) }
@@ -1262,8 +1262,8 @@ private fun SleetEffect(
                 // 雨滴垂直下落
                 drawRainStreak(
                     x = x, y = y, length = drop.length,
-                    width = drop.thickness * thicknessMultiplier * 0.8f,
-                    alpha = drop.alpha * alphaMultiplier * 0.8f,
+                    width = drop.thickness * thicknessMultiplier * 0.9f,
+                    alpha = drop.alpha * alphaMultiplier * 0.85f,
                     angle = angle, hard = false
                 )
             }
@@ -1470,12 +1470,12 @@ private fun generateRaindrops(count: Int, width: Float, height: Float): List<Rai
         Raindrop(
             x = Random.nextFloat() * width,
             y = Random.nextFloat() * height,
-            alpha = Random.nextFloat() * 0.3f + 0.2f,  // 0.2-0.5（更明显）
+            alpha = Random.nextFloat() * 0.35f + 0.3f,  // 0.3-0.65
             size = Random.nextFloat() * 1.5f + 0.5f,
             speedX = Random.nextFloat() * 1.8f - 0.4f,
             speedY = speed,
-            length = Random.nextFloat() * 22f + 15f,  // 15-37（更长）
-            thickness = Random.nextFloat() * 1.2f + 0.6f  // 0.6-1.8（更粗）
+            length = Random.nextFloat() * 28f + 18f,    // 18-46
+            thickness = Random.nextFloat() * 1.5f + 0.8f // 0.8-2.3
         )
     }
 }
