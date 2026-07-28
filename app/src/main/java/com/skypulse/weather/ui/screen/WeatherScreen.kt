@@ -42,6 +42,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.skypulse.weather.util.skyGradientColorStops
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -529,7 +530,7 @@ private fun AnimatedContentTransitionScope<AppScreen>.skyPulseScreenTransition()
 
 private fun AppScreen.screenBackgroundBrush(weatherTheme: WeatherTheme, secondaryBackground: Color): Brush {
     return when (this) {
-        AppScreen.CityDetail -> Brush.verticalGradient(weatherTheme.backgroundGradient)
+        AppScreen.CityDetail -> Brush.verticalGradient(colorStops = *skyGradientColorStops(weatherTheme.backgroundGradient))
         AppScreen.CityList,
         AppScreen.Settings,
         AppScreen.AlertDetail -> Brush.verticalGradient(listOf(secondaryBackground, secondaryBackground))

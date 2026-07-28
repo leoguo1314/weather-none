@@ -10,6 +10,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import com.skypulse.weather.model.DailyForecast
+import com.skypulse.weather.util.skyGradientColorStops
 import com.skypulse.weather.util.WeatherUtils
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.haze
@@ -60,13 +61,13 @@ fun WeatherBackground(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(
-                        Brush.verticalGradient(
-                            colors = animatedColors,
-                            startY = 0f,
-                            endY = Float.POSITIVE_INFINITY
-                        )
+                .background(
+                    Brush.verticalGradient(
+                        colorStops = *skyGradientColorStops(animatedColors),
+                        startY = 0f,
+                        endY = Float.POSITIVE_INFINITY
                     )
+                )
             )
             // 粒子效果叠加层（不影响内容展示）
             if (showParticles) {

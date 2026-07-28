@@ -8,6 +8,22 @@ import com.skypulse.weather.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
 
+/**
+ * 天空渐变锚点，与 [getWeatherGradient] 返回的 5 色一一对应。
+ *
+ * 非等距：顶部天顶色（最深的 color[0]）占据上约 40%，压住「天顶」层次，
+ * 之后向地平线（最亮的 color[4]）逐步加速提亮——更接近真实天空由深到浅的过渡，
+ * 而非把 5 色机械均分在 0/0.25/0.5/0.75/1.0。
+ */
+val SkyGradientStops: List<Float> = listOf(0.0f, 0.40f, 0.65f, 0.85f, 1.0f)
+
+/**
+ * 将天空渐变色与 [SkyGradientStops] 锚点组合为 Brush.verticalGradient(vararg) 所需的颜色停靠对。
+ * 调用方用展开运算符传入：Brush.verticalGradient(colorStops = *skyGradientColorStops(colors), ...)。
+ */
+fun skyGradientColorStops(colors: List<Color>): Array<Pair<Float, Color>> =
+    colors.zip(SkyGradientStops) { color, stop -> stop to color }.toTypedArray()
+
 object WeatherUtils {
 
     private val hourFormat: ThreadLocal<SimpleDateFormat> = ThreadLocal.withInitial {
@@ -38,8 +54,10 @@ object WeatherUtils {
         val glass = if (isDay && !precipOrSnow) {
             val light = lerpColor(saturateColor(hue, 1.4f), Color.White, 0.55f)
             GlassColors(
-                tint = light.copy(alpha = 0.32f),
-                tintFallback = light.copy(alpha = 0.45f),
+                // 白天玻璃轻量化：降低罩色不透明度，让卡片「溶解」进蓝天、雨丝/星空透出，
+                // 接近 iOS 仅以模糊+微弱亮度差分层的观感（夜晚/雨雪分支保持深玻璃不变）。
+                tint = light.copy(alpha = 0.14f),
+                tintFallback = light.copy(alpha = 0.22f),
                 isLight = true
             )
         } else {
