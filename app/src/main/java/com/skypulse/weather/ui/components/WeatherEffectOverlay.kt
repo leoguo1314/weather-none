@@ -15,6 +15,9 @@ import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
+import kotlin.math.roundToInt
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
@@ -36,8 +39,10 @@ import kotlin.random.Random
 /** 弧度转角度 */
 private const val RadToDeg = 57.29578f
 
-/** 雨丝最大倾斜角（弧度，约 20°），防止强风下角度失真 */
-private const val MaxRainSlantRad = 0.349f
+/** 雨丝固定倾斜角（弧度）：10° */
+private const val RainSlantRad = 0.17453293f
+/** tan(10°)：雨丝水平速度 vx = vy * 此值，使运动轨迹方向与渲染倾斜一致 */
+private const val RainSlantTan = 0.17632698f
 
 /** 闪电序列总时长（秒） */
 private const val LightningDuration = 0.5f
@@ -190,26 +195,22 @@ private fun computeWindSlant(wind: WindInfo?): Float {
 private fun wrap(value: Float, modulo: Float): Float = ((value % modulo) + modulo) % modulo
 
 /**
- * 雨丝倾斜角：由水平/垂直速度比决定，限制在 ±20° 内
- */
-private fun slantAngle(vx: Float, vy: Float): Float =
-    atan2(vx, vy).coerceIn(-MaxRainSlantRad, MaxRainSlantRad)
-
-/**
  * 绘制雨丝（无风时走原路径零额外开销；有风时绕顶点旋转）
+ * @param tint 冷色电影感着色（大气透视分级），null 表示保持原白色
  */
 private fun DrawScope.drawRainStreak(
     x: Float, y: Float, length: Float, width: Float, alpha: Float,
-    angle: Float, hard: Boolean
+    angle: Float, hard: Boolean, tint: Color? = null
 ) {
-    val sprite = if (hard) ParticleSprites.rainStreakHard else ParticleSprites.rainStreakSoft
+    val sprite = if (hard) ParticleSprites.rainStreakPro else ParticleSprites.rainStreakProFar
+    val colorFilter = tint?.let { ParticleSprites.tint(it) }
     if (angle == 0f) {
-        drawStreak(sprite, x, y, width, length, alpha)
+        drawStreak(sprite, x, y, width, length, alpha, colorFilter)
     } else {
         withTransform({
             rotate(degrees = angle * RadToDeg, pivot = Offset(x, y))
         }) {
-            drawStreak(sprite, x, y, width, length, alpha)
+            drawStreak(sprite, x, y, width, length, alpha, colorFilter)
         }
     }
 }
@@ -526,15 +527,18 @@ private fun ClearNightEffect(
 }
 
 /**
- * 雨天效果 - 4层雨效果 + 底部水雾
- * 支持天气强度调整（小雨、中雨、大雨、暴雨）
- * 支持风驱动倾斜（无风数据时与原实现完全一致）
+ * 雨天效果（电影感 · Cinematic Depth Rain）
+ * - 运动模糊雨丝（两端柔化 + 高光内芯），取代廉价水滴形 + 白点头部
+ * - 大气透视分级：远景冷蓝、近景近白，层间漂浮体积雾制造纵深
+ * - 雨丝更长、更粗、更清晰，强化可见度
+ * 支持天气强度调整（小雨、中雨、大雨、暴雨）；雨丝固定 10° 倾斜下落，不再依赖风力
  *
  * 4层结构：
- * 1. 远景层（far）：小、淡、慢，模拟远处的雨
- * 2. 中远景层（mid-far）：中等大小和透明度
- * 3. 中近景层（mid-near）：较大、较明显
- * 4. 近景层（near）：最大、最明显、最快
+ * 1. 远景层（far）：小、淡、慢、冷蓝
+ * 2. 中远景层（mid-far）：中等，冷蓝
+ * 3. 体积雾（depth haze）：低透明度冷雾，制造大气纵深
+ * 4. 中近景层（mid-near）：较大、明显、近白
+ * 5. 近景层（near）：最大、最快、最亮、近白
  */
 @Composable
 private fun RainEffect(
@@ -560,6 +564,7 @@ private fun RainEffect(
         val raindropsMidNear = remember(areaWidth, areaHeight, intensity.particleCount) { generateRainLayer(midNearCount, areaWidth, areaHeight, isFar = false) }
         val raindropsNear = remember(areaWidth, areaHeight, intensity.particleCount) { generateRainLayer(nearCount, areaWidth, areaHeight, isFar = false) }
         val rainMist = remember(areaWidth) { generateRainMist(areaWidth) }
+        val depthHaze = remember(areaWidth, areaHeight) { generateDepthHaze(areaWidth, areaHeight) }
 
         var animationTime by remember { mutableStateOf(0f) }
         var lastFrameTime by remember { mutableStateOf(0L) }
@@ -581,112 +586,144 @@ private fun RainEffect(
             }
         }
 
-        // 风横向速度（px/s，满强度 220）
-        val windVx = windSlant * 220f
+        // 固定 10° 倾斜下落（不再依赖风力大小），见 RainSlantRad / RainSlantTan
 
         Canvas(modifier = Modifier.fillMaxSize()) {
             val speedMultiplier = intensity.speed
             val alphaMultiplier = intensity.alpha
             val thicknessMultiplier = intensity.thickness
 
-            // ============ 1. 远景层（far）- 小、淡、慢 ============
+            // ============ 1. 远景层（far）- 小、淡、慢、冷蓝 ============
             raindropsFar.forEach { drop ->
                 val speedFactor = 80f * speedMultiplier
-                val vx = drop.speedX * 15 + windVx
                 val vy = drop.speedY * speedFactor
+                // 横向速度与渲染倾斜同方向：渲染时雨丝绕顶端顺时针旋转 +θ 后
+                // 底部摆向左侧（轴方向 = (-sinθ, cosθ)），故 vx 取负与之对齐，
+                // 否则雨丝向左歪却向右运动，看起来像在漂移。
+                val vx = -vy * RainSlantTan
                 val x = wrap(drop.x + animationTime * vx, size.width + 60f) - 30f
                 val y = wrap(drop.y + animationTime * vy, size.height + drop.length) - drop.length
-                val angle = if (windVx != 0f) slantAngle(vx, vy) else 0f
+                val angle = RainSlantRad
 
                 drawRainStreak(
                     x = x, y = y, length = drop.length,
                     width = drop.thickness * thicknessMultiplier * 0.5f,
                     alpha = drop.alpha * alphaMultiplier * 0.42f,
-                    angle = angle, hard = false
+                    angle = angle, hard = false, tint = ParticleSprites.RainTintFar
                 )
             }
 
-            // ============ 2. 中远景层（mid-far） ============
+            // ============ 2. 中远景层（mid-far）- 冷蓝 ============
             raindropsMidFar.forEach { drop ->
                 val speedFactor = 120f * speedMultiplier
-                val vx = drop.speedX * 25 + windVx
                 val vy = drop.speedY * speedFactor
+                // 横向速度与渲染倾斜同方向：渲染时雨丝绕顶端顺时针旋转 +θ 后
+                // 底部摆向左侧（轴方向 = (-sinθ, cosθ)），故 vx 取负与之对齐，
+                // 否则雨丝向左歪却向右运动，看起来像在漂移。
+                val vx = -vy * RainSlantTan
                 val x = wrap(drop.x + animationTime * vx, size.width + 80f) - 40f
                 val y = wrap(drop.y + animationTime * vy, size.height + drop.length) - drop.length
-                val angle = if (windVx != 0f) slantAngle(vx, vy) else 0f
+                val angle = RainSlantRad
 
                 drawRainStreak(
                     x = x, y = y, length = drop.length,
                     width = drop.thickness * thicknessMultiplier * 0.7f,
                     alpha = drop.alpha * alphaMultiplier * 0.62f,
-                    angle = angle, hard = false
+                    angle = angle, hard = false, tint = ParticleSprites.RainTintFar
                 )
             }
 
-            // ============ 3. 中近景层（mid-near） ============
+            // ============ 3. 体积雾（大气纵深，冷色低透明度） ============
+            depthHaze.forEach { h ->
+                val hx = wrap(h.x + animationTime * h.speedX * 12, size.width + h.size) - h.size / 2
+                val hy = h.y + sin(animationTime * 0.15f + h.phase) * 20f
+                drawGlow(
+                    sprite = ParticleSprites.glowSoft,
+                    centerX = hx, centerY = hy,
+                    radius = h.size,
+                    alpha = h.alpha,
+                    colorFilter = ParticleSprites.tint(ParticleSprites.RainHazeCool)
+                )
+            }
+
+            // ============ 4. 中近景层（mid-near）- 近白 ============
             raindropsMidNear.forEach { drop ->
                 val speedFactor = 170f * speedMultiplier
-                val vx = drop.speedX * 35 + windVx
                 val vy = drop.speedY * speedFactor
+                // 横向速度与渲染倾斜同方向：渲染时雨丝绕顶端顺时针旋转 +θ 后
+                // 底部摆向左侧（轴方向 = (-sinθ, cosθ)），故 vx 取负与之对齐，
+                // 否则雨丝向左歪却向右运动，看起来像在漂移。
+                val vx = -vy * RainSlantTan
                 val x = wrap(drop.x + animationTime * vx, size.width + 100f) - 50f
                 val y = wrap(drop.y + animationTime * vy, size.height + drop.length) - drop.length
-                val angle = if (windVx != 0f) slantAngle(vx, vy) else 0f
+                val angle = RainSlantRad
 
                 drawRainStreak(
                     x = x, y = y, length = drop.length,
                     width = drop.thickness * thicknessMultiplier * 0.85f,
-                    alpha = drop.alpha * alphaMultiplier * 0.8f,
-                    angle = angle, hard = false
-                )
-
-                // 雨滴头部高光（纺锤体底部本身已高亮，此点缀增强立体感）
-                drawCircle(
-                    color = Color.White.copy(alpha = drop.alpha * alphaMultiplier * 0.45f),
-                    radius = drop.thickness * thicknessMultiplier * 0.55f,
-                    center = Offset(x + sin(angle) * drop.length, y + cos(angle) * drop.length)
+                    alpha = drop.alpha * alphaMultiplier * 0.88f,
+                    angle = angle, hard = true, tint = ParticleSprites.RainTintNear
                 )
             }
 
-            // ============ 4. 近景层（near）- 最大、最明显、最快 ============
+            // ============ 5. 近景层（near）- 最大、最快、最亮 ============
             raindropsNear.forEach { drop ->
                 val speedFactor = 230f * speedMultiplier
-                val vx = drop.speedX * 45 + windVx
                 val vy = drop.speedY * speedFactor
+                // 横向速度与渲染倾斜同方向：渲染时雨丝绕顶端顺时针旋转 +θ 后
+                // 底部摆向左侧（轴方向 = (-sinθ, cosθ)），故 vx 取负与之对齐，
+                // 否则雨丝向左歪却向右运动，看起来像在漂移。
+                val vx = -vy * RainSlantTan
                 val x = wrap(drop.x + animationTime * vx, size.width + 120f) - 60f
                 val y = wrap(drop.y + animationTime * vy, size.height + drop.length) - drop.length
-                val angle = if (windVx != 0f) slantAngle(vx, vy) else 0f
+                val angle = RainSlantRad
 
-                // 雨滴主体
                 drawRainStreak(
                     x = x, y = y, length = drop.length,
-                    width = drop.thickness * thicknessMultiplier * 1.1f,
-                    alpha = drop.alpha * alphaMultiplier * 0.95f,
-                    angle = angle, hard = true
-                )
-
-                // 雨滴头部高光（更明显）
-                drawCircle(
-                    color = Color.White.copy(alpha = drop.alpha * alphaMultiplier * 0.7f),
-                    radius = drop.thickness * thicknessMultiplier * 0.85f,
-                    center = Offset(x + sin(angle) * drop.length, y + cos(angle) * drop.length)
+                    width = drop.thickness * thicknessMultiplier * 1.2f,
+                    alpha = drop.alpha * alphaMultiplier * 1f,
+                    angle = angle, hard = true, tint = ParticleSprites.RainTintNear
                 )
             }
 
-            // ============ 5. 底部水雾效果（暴雨时更明显，精灵化） ============
+            // ============ 6. 底部水雾效果（暴雨时更明显） ============
             val mistAlphaBoost = if (intensity.particleCount > 1.5f) 1.5f else 1f
             rainMist.forEach { mist ->
                 val x = wrap(mist.x + animationTime * mist.speedX * 15, size.width + mist.size * 2) - mist.size
                 val y = size.height - mist.y - mist.size * 0.3f
-
                 drawGlow(
                     sprite = ParticleSprites.glowMist,
                     centerX = x, centerY = y,
                     radius = mist.size,
-                    alpha = mist.alpha * mistAlphaBoost * 0.6f
+                    alpha = mist.alpha * mistAlphaBoost * 0.6f,
+                    colorFilter = ParticleSprites.tint(ParticleSprites.RainTintNear)
                 )
             }
+
         }
     }
+}
+
+/** 体积雾粒子（大气纵深） */
+private data class HazeP(
+    val x: Float,
+    val y: Float,
+    val alpha: Float,
+    val size: Float,
+    val speedX: Float,
+    val phase: Float
+)
+
+/** 生成体积雾层（冷色低透明度，漂浮缓慢） */
+private fun generateDepthHaze(width: Float, height: Float): List<HazeP> = List(6) {
+    HazeP(
+        x = Random.nextFloat() * width,
+        y = height * (0.45f + Random.nextFloat() * 0.45f),
+        alpha = Random.nextFloat() * 0.05f + 0.04f,
+        size = Random.nextFloat() * (width * 0.18f) + width * 0.12f,
+        speedX = Random.nextFloat() * 0.5f + 0.2f,
+        phase = Random.nextFloat() * PI.toFloat() * 2f
+    )
 }
 
 /**
@@ -717,14 +754,14 @@ private fun generateRainLayer(count: Int, width: Float, height: Float, isFar: Bo
             speedX = Random.nextFloat() * 1.5f - 0.3f,
             speedY = speed,
             length = if (isFar) {
-                Random.nextFloat() * 14f + 10f  // 远景: 10-24
+                Random.nextFloat() * 26f + 22f  // 远景: 22-48（再加长）
             } else {
-                Random.nextFloat() * 28f + 18f   // 非远景: 18-46
+                Random.nextFloat() * 50f + 42f   // 非远景: 42-92（再加长）
             },
             thickness = if (isFar) {
-                Random.nextFloat() * 0.7f + 0.4f  // 远景: 0.4-1.1
+                Random.nextFloat() * 1.1f + 0.8f  // 远景: 0.8-1.9（再加粗）
             } else {
-                Random.nextFloat() * 1.5f + 0.8f   // 非远景: 0.8-2.3
+                Random.nextFloat() * 2.6f + 1.7f   // 非远景: 1.7-4.3（再加粗）
             }
         )
     }
@@ -1094,9 +1131,6 @@ private fun ThunderShowerEffect(
             }
         }
 
-        // 风横向速度（px/s）
-        val windVx = windSlant * 220f
-
         Canvas(modifier = Modifier.fillMaxSize()) {
             // 优化: 根据强度调整参数
             val speedMultiplier = intensity.speed
@@ -1106,24 +1140,21 @@ private fun ThunderShowerEffect(
             // 绘制雨滴
             raindrops.forEach { drop ->
                 val speedFactor = 180f * speedMultiplier
-                val vx = drop.speedX * 35 + windVx
                 val vy = drop.speedY * speedFactor
+                // 横向速度与渲染倾斜同方向：渲染时雨丝绕顶端顺时针旋转 +θ 后
+                // 底部摆向左侧（轴方向 = (-sinθ, cosθ)），故 vx 取负与之对齐，
+                // 否则雨丝向左歪却向右运动，看起来像在漂移。
+                val vx = -vy * RainSlantTan
                 val x = wrap(drop.x + animationTime * vx, size.width + 100f) - 50f
                 val y = wrap(drop.y + animationTime * vy, size.height + drop.length) - drop.length
-                val angle = if (windVx != 0f) slantAngle(vx, vy) else 0f
+                val angle = RainSlantRad
 
-                // 雨滴垂直下落（有风时按倾斜角绘制）
+                // 雨滴垂直下落（电影感运动模糊雨丝，有风时按倾斜角绘制）
                 drawRainStreak(
                     x = x, y = y, length = drop.length,
-                    width = drop.thickness * thicknessMultiplier * 1.1f,
-                    alpha = drop.alpha * alphaMultiplier * 0.95f,
-                    angle = angle, hard = true
-                )
-
-                drawCircle(
-                    color = Color.White.copy(alpha = drop.alpha * alphaMultiplier * 0.7f),
-                    radius = drop.thickness * thicknessMultiplier * 0.85f,
-                    center = Offset(x + sin(angle) * drop.length, y + cos(angle) * drop.length)
+                    width = drop.thickness * thicknessMultiplier * 1.2f,
+                    alpha = drop.alpha * alphaMultiplier * 1f,
+                    angle = angle, hard = true, tint = ParticleSprites.RainTintNear
                 )
             }
 
@@ -1253,18 +1284,21 @@ private fun SleetEffect(
             // 绘制雨滴
             raindrops.forEach { drop ->
                 val speedFactor = 160f * speedMultiplier
-                val vx = drop.speedX * 30 + windVx
                 val vy = drop.speedY * speedFactor
+                // 横向速度与渲染倾斜同方向：渲染时雨丝绕顶端顺时针旋转 +θ 后
+                // 底部摆向左侧（轴方向 = (-sinθ, cosθ)），故 vx 取负与之对齐，
+                // 否则雨丝向左歪却向右运动，看起来像在漂移。
+                val vx = -vy * RainSlantTan
                 val x = wrap(drop.x + animationTime * vx, size.width + 100f) - 50f
                 val y = wrap(drop.y + animationTime * vy, size.height + drop.length) - drop.length
-                val angle = if (windVx != 0f) slantAngle(vx, vy) else 0f
+                val angle = RainSlantRad
 
-                // 雨滴垂直下落
+                // 雨滴垂直下落（电影感运动模糊雨丝）
                 drawRainStreak(
                     x = x, y = y, length = drop.length,
-                    width = drop.thickness * thicknessMultiplier * 0.9f,
-                    alpha = drop.alpha * alphaMultiplier * 0.85f,
-                    angle = angle, hard = false
+                    width = drop.thickness * thicknessMultiplier * 1.0f,
+                    alpha = drop.alpha * alphaMultiplier * 0.9f,
+                    angle = angle, hard = false, tint = ParticleSprites.RainTintNear
                 )
             }
 

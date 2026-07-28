@@ -12,8 +12,11 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
+import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.exp
 import kotlin.math.roundToInt
+import kotlin.math.sin
 
 /**
  * 粒子精灵（Sprite）缓存
@@ -107,6 +110,29 @@ object ParticleSprites {
     /** 高对比雨丝：(0.1, 0.6, 1.0)，用于近景雨层、雷阵雨 */
     val rainStreakHard: ImageBitmap by lazy { bakeStreak(0.1f, 0.6f, 1.0f) }
 
+    // ============ 高级运动模糊雨丝（两端柔化 + 高光内芯） ============
+
+    /**
+     * 电影感雨丝（近景/中景）：高速下落被运动模糊拉长的细长条，
+     * 顶部（尾迹）与底部（落点）皆柔化淡出，中部一条极细的高光内芯模拟「湿亮反光」。
+     * 取代原水滴形 + 白点头部，消除虚线/彗尾的廉价感。
+     */
+    val rainStreakPro: ImageBitmap by lazy { bakeStreakPro(tail = 0f, body = 0.82f, head = 0.62f, core = 0.55f) }
+
+    /** 电影感雨丝（远景）：更弥散、更暗，配合冷蓝大气透视 */
+    val rainStreakProFar: ImageBitmap by lazy { bakeStreakPro(tail = 0f, body = 0.5f, head = 0.42f, core = 0.28f) }
+
+    // ============ 冷色电影感配色（大气透视分级） ============
+
+    /** 远景雨冷蓝（大气散射：越远越蓝越虚） */
+    val RainTintFar = Color(0xFF9DC3E6)
+
+    /** 近景雨近白冷（贴近镜头：更通透、几乎不着色） */
+    val RainTintNear = Color(0xFFEAF4FF)
+
+    /** 体积雾冷色（层间纵深雾） */
+    val RainHazeCool = Color(0xFFAECBE6)
+
     // ============ 参数化精灵 ============
 
     /**
@@ -178,6 +204,46 @@ object ParticleSprites {
         bitmap.setPixels(pixels, 0, w, 0, 0, w, h)
         return bitmap.asImageBitmap()
     }
+
+    /**
+     * 烘焙电影感运动模糊雨丝：
+     * - 垂直 alpha 在尾迹(顶)与落点(底)皆柔化淡出，中部恒定，模拟高速运动模糊的长条；
+     * - 横向为纺锤轮廓，叠加一条按固定半宽计算的高斯亮芯（不随轮廓缩放，保持极细反光）。
+     * @param tail  顶部(尾迹)alpha
+     * @param body  中部主体alpha
+     * @param head  底部(落点)alpha
+     * @param core  高光内芯强度
+     */
+    private fun bakeStreakPro(tail: Float, body: Float, head: Float, core: Float): ImageBitmap {
+        val w = StreakWidth
+        val h = StreakHeight
+        val bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        val pixels = IntArray(w * h)
+        val halfW = w / 2f
+        val coreHalf = halfW * 0.42f // 高光内芯固定半宽，保证缩放后仍是细线
+        for (y in 0 until h) {
+            val t = y.toFloat() / h // 0=尾迹, 1=落点
+            val vertAlpha = when {
+                t < 0.16f -> tail + (body - tail) * (t / 0.16f)
+                t > 0.84f -> body + (head - body) * ((t - 0.84f) / 0.16f)
+                else -> body
+            }
+            // 纺锤宽度轮廓：两端收窄、中部饱满
+            val radiusAtY = halfW * (0.18f + 0.82f * sin(t * PI.toFloat()))
+            for (x in 0 until w) {
+                val dxEdge = ((x + 0.5f - halfW) / radiusAtY).coerceIn(-1f, 1f)
+                val edge = (1f - dxEdge * dxEdge * dxEdge).coerceIn(0f, 1f) // 柔和纺锤
+                val dxCore = (x + 0.5f - halfW) / coreHalf
+                val coreG = exp(-(dxCore * dxCore) / 0.12f) // 极细高斯亮芯
+                val horiz = (edge * 0.55f + coreG * core).coerceIn(0f, 1.4f)
+                val a = (vertAlpha * horiz * 255).roundToInt().coerceIn(0, 255)
+                pixels[y * w + x] = (a shl 24) or 0x00FFFFFF
+            }
+        }
+        bitmap.setPixels(pixels, 0, w, 0, 0, w, h)
+        return bitmap.asImageBitmap()
+    }
+
 }
 
 /**
@@ -218,7 +284,8 @@ fun DrawScope.drawStreak(
     top: Float,
     width: Float,
     height: Float,
-    alpha: Float
+    alpha: Float,
+    colorFilter: ColorFilter? = null
 ) {
     if (alpha <= 0f || width <= 0f || height <= 0f) return
     drawImage(
@@ -231,6 +298,7 @@ fun DrawScope.drawStreak(
             width.roundToInt().coerceAtLeast(1),
             height.roundToInt().coerceAtLeast(1)
         ),
-        alpha = alpha.coerceAtMost(1f)
+        alpha = alpha.coerceAtMost(1f),
+        colorFilter = colorFilter
     )
 }
