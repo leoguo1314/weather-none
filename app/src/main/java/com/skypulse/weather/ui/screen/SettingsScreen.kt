@@ -347,6 +347,20 @@ fun SettingsScreen(
                         )
                         IosDivider()
                         SimpleItem(
+                            title = "全球地区天气",
+                            titleColor = page.textSecondary,
+                            trailing = {
+                                LucideIcon(
+                                    name = "lock",
+                                    contentDescription = "会员功能",
+                                    size = 18.dp,
+                                    tint = page.textSecondary.copy(alpha = 0.5f)
+                                )
+                            },
+                            onClick = { showMembershipDialog = true }
+                        )
+                        IosDivider()
+                        SimpleItem(
                             title = "街道/小区级定位",
                             titleColor = page.textSecondary,
                             trailing = {
@@ -405,6 +419,20 @@ fun SettingsScreen(
                         // 已付费状态：显示已解锁项
                         SimpleItem(
                             title = "多城市天气",
+                            titleColor = page.textPrimary,
+                            trailing = {
+                                LucideIcon(
+                                    name = "check",
+                                    contentDescription = "已解锁",
+                                    size = 18.dp,
+                                    tint = page.accentGreen
+                                )
+                            },
+                            onClick = { }
+                        )
+                        IosDivider()
+                        SimpleItem(
+                            title = "全球地区天气",
                             titleColor = page.textPrimary,
                             trailing = {
                                 LucideIcon(
