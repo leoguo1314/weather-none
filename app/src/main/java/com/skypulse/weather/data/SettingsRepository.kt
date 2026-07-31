@@ -25,6 +25,7 @@ data class WeatherSettings(
     val showCardDetail: Boolean = true,
     val showCardSunriseSunset: Boolean = true,
     val showCardMinutely: Boolean = true,
+    val showCardTyphoon: Boolean = true,
     val themeMode: ThemeMode = ThemeMode.SYSTEM
 )
 
@@ -60,6 +61,7 @@ class SettingsRepository @Inject constructor(
     fun setShowCardDetail(enabled: Boolean) = updateBoolean(KEY_SHOW_CARD_DETAIL, enabled)
     fun setShowCardSunriseSunset(enabled: Boolean) = updateBoolean(KEY_SHOW_CARD_SUNRISE_SUNSET, enabled)
     fun setShowCardMinutely(enabled: Boolean) = updateBoolean(KEY_SHOW_CARD_MINUTELY, enabled)
+    fun setShowCardTyphoon(enabled: Boolean) = updateBoolean(KEY_SHOW_CARD_TYPHOON, enabled)
     fun setThemeMode(mode: ThemeMode) {
         prefs.edit().putString(KEY_THEME_MODE, mode.name).apply()
         _settings.value = readSettings()
@@ -83,6 +85,7 @@ class SettingsRepository @Inject constructor(
         showCardDetail = prefs.getBoolean(KEY_SHOW_CARD_DETAIL, true),
         showCardSunriseSunset = prefs.getBoolean(KEY_SHOW_CARD_SUNRISE_SUNSET, true),
         showCardMinutely = prefs.getBoolean(KEY_SHOW_CARD_MINUTELY, true),
+        showCardTyphoon = prefs.getBoolean(KEY_SHOW_CARD_TYPHOON, true),
         themeMode = try {
             ThemeMode.valueOf(prefs.getString(KEY_THEME_MODE, ThemeMode.SYSTEM.name) ?: ThemeMode.SYSTEM.name)
         } catch (_: Exception) { ThemeMode.SYSTEM }
@@ -101,6 +104,7 @@ class SettingsRepository @Inject constructor(
         private const val KEY_SHOW_CARD_DETAIL = "show_card_detail"
         private const val KEY_SHOW_CARD_SUNRISE_SUNSET = "show_card_sunrise_sunset"
         private const val KEY_SHOW_CARD_MINUTELY = "show_card_minutely"
+        private const val KEY_SHOW_CARD_TYPHOON = "show_card_typhoon"
         private const val KEY_THEME_MODE = "theme_mode"
     }
 }

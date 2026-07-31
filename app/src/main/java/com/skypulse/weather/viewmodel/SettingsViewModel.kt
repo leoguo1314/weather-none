@@ -59,6 +59,7 @@ class SettingsViewModel @Inject constructor(
     fun setShowCardDetail(enabled: Boolean) = settingsRepository.setShowCardDetail(enabled)
     fun setShowCardSunriseSunset(enabled: Boolean) = settingsRepository.setShowCardSunriseSunset(enabled)
     fun setShowCardMinutely(enabled: Boolean) = settingsRepository.setShowCardMinutely(enabled)
+    fun setShowCardTyphoon(enabled: Boolean) = settingsRepository.setShowCardTyphoon(enabled)
     fun setThemeMode(mode: ThemeMode) = settingsRepository.setThemeMode(mode)
 
     private fun updateAlertSetting(update: () -> Unit) {

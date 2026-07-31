@@ -3,5 +3,8 @@
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="true">api.tianditu.gov.cn</domain>
         <domain includeSubdomains="true">weatherapi.market.xiaomi.com</domain>
+        <!-- 台风路径页面使用的高德地图 HTTP 瓦片 -->
+        <domain includeSubdomains="true">is.autonavi.com</domain>
+        <domain includeSubdomains="true">tf.istrongcloud.com</domain>
     </domain-config>
 </network-security-config>

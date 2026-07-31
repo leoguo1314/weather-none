@@ -59,6 +59,7 @@ fun SettingsScreen(
     onShowCardDetailChange: (Boolean) -> Unit,
     onShowCardSunriseSunsetChange: (Boolean) -> Unit,
     onShowCardMinutelyChange: (Boolean) -> Unit,
+    onShowCardTyphoonChange: (Boolean) -> Unit,
     onThemeModeChange: (ThemeMode) -> Unit,
     isPremium: Boolean = false,
     activatedAt: Long = 0L,
@@ -292,6 +293,13 @@ fun SettingsScreen(
                         onCheckedChange = onShowCardSunriseSunsetChange,
                         locked = !isPremium,
                         onLockedClick = { showMembershipDialog = true }
+                    )
+                    IosDivider()
+                    ToggleItem(
+                        title = "台风雷达图",
+                        checked = settings.showCardTyphoon,
+                        onCheckedChange = onShowCardTyphoonChange
+                        // 免费用户和会员均解锁
                     )
                 }
 

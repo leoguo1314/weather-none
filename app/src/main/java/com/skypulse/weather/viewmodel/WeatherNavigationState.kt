@@ -41,6 +41,10 @@ class WeatherNavigationState {
         _selectedCityId.value = cityId
     }
 
+    fun showRadarMap() {
+        _currentScreen.value = AppScreen.RadarMap
+    }
+
     fun markNextSwipe() {
         _swipeDirection.value = 1
     }

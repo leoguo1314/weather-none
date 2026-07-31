@@ -52,6 +52,7 @@ import com.skypulse.weather.data.WeatherSettings
 import com.skypulse.weather.domain.CitySelectionPolicy
 import com.skypulse.weather.model.sortedByPublishTimeDescending
 import com.skypulse.weather.util.WeatherUtils
+import com.skypulse.weather.ui.components.RadarMapCard
 import com.skypulse.weather.ui.components.*
 import com.skypulse.weather.ui.theme.*
 import com.skypulse.weather.viewmodel.AppScreen
@@ -405,7 +406,8 @@ fun WeatherScreen(
                                                         } else {
                                                             showMembershipDialog = true
                                                         }
-                                                    }
+                                                    },
+                                                    onRadarClick = { viewModel.navigateToRadarMap() }
                                                 )
                                             } else {
                                                 LoadingShimmer(modifier = Modifier.fillMaxSize())
@@ -471,6 +473,7 @@ fun WeatherScreen(
                     onShowCardDetailChange = { settingsViewModel.setShowCardDetail(it) },
                     onShowCardSunriseSunsetChange = { settingsViewModel.setShowCardSunriseSunset(it) },
                     onShowCardMinutelyChange = { settingsViewModel.setShowCardMinutely(it) },
+                    onShowCardTyphoonChange = { settingsViewModel.setShowCardTyphoon(it) },
                     onThemeModeChange = { settingsViewModel.setThemeMode(it) },
                     isPremium = isPremium,
                     activatedAt = settingsViewModel.getActivatedAt(),
@@ -487,6 +490,20 @@ fun WeatherScreen(
                 AlertDetailScreen(
                     alerts = contents,
                     initialSelectedIndex = selectedAlertIndex,
+                    onBack = { viewModel.navigateBack() }
+                )
+            }
+
+            AppScreen.RadarMap -> {
+                val currentCity = remember {
+                    savedCities.find { it.id == selectedCityId }
+                        ?: savedCities.firstOrNull { it.isCurrentLocation }
+                        ?: savedCities.firstOrNull()
+                }
+                RadarMapScreen(
+                    latitude = currentCity?.latitude,
+                    longitude = currentCity?.longitude,
+                    locationName = effectiveLocationName,
                     onBack = { viewModel.navigateBack() }
                 )
             }
@@ -533,7 +550,8 @@ private fun AppScreen.screenBackgroundBrush(weatherTheme: WeatherTheme, secondar
         AppScreen.CityDetail -> Brush.verticalGradient(colorStops = *skyGradientColorStops(weatherTheme.backgroundGradient))
         AppScreen.CityList,
         AppScreen.Settings,
-        AppScreen.AlertDetail -> Brush.verticalGradient(listOf(secondaryBackground, secondaryBackground))
+        AppScreen.AlertDetail,
+        AppScreen.RadarMap -> Brush.verticalGradient(listOf(secondaryBackground, secondaryBackground))
     }
 }
 
@@ -543,6 +561,7 @@ private val AppScreen.screenOrder: Int
         AppScreen.CityDetail -> 0
         AppScreen.Settings -> 1
         AppScreen.AlertDetail -> 1
+        AppScreen.RadarMap -> 1
     }
 
 // ==================== Helper Composables ====================
@@ -605,7 +624,8 @@ private fun WeatherContentBody(
     onAlertClick: (Int) -> Unit = {},
     showBookmark: Boolean = false,
     isBookmarked: Boolean = false,
-    onBookmarkClick: () -> Unit = {}
+    onBookmarkClick: () -> Unit = {},
+    onRadarClick: () -> Unit = {}
 ) {
     val result = state.weather.result
     val realtime = result?.realtime
@@ -733,6 +753,17 @@ private fun WeatherContentBody(
             if (isPremium && settings.showCardSunriseSunset) {
                 SunriseSunsetCard(
                     astro = result?.daily?.astro,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = SkyPulseDesignSystem.Spacing.screenHorizontal)
+                )
+                Spacer(modifier = Modifier.height(SkyPulseDesignSystem.Spacing.sectionGap))
+            }
+
+            // 台风雷达图预览卡片（免费用户和会员均解锁）
+            if (settings.showCardTyphoon) {
+                RadarMapCard(
+                    onClick = onRadarClick,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = SkyPulseDesignSystem.Spacing.screenHorizontal)

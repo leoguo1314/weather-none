@@ -349,9 +349,13 @@ class WeatherViewModel @Inject constructor(
         navigation.showAlertDetail(alertIndex)
     }
 
+    fun navigateToRadarMap() {
+        navigation.showRadarMap()
+    }
+
     fun navigateBack() {
         when (currentScreen.value) {
-            AppScreen.Settings, AppScreen.AlertDetail -> {
+            AppScreen.Settings, AppScreen.AlertDetail, AppScreen.RadarMap -> {
                 navigation.showCityDetail()
             }
             AppScreen.CityList -> {
