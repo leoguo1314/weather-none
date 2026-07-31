@@ -2,26 +2,16 @@ package com.skypulse.weather.ui.components
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.skypulse.weather.ui.screen.LocalSkipCardAnimation
@@ -52,8 +42,6 @@ fun RadarMapCard(
     LaunchedEffect(Unit) { visible = true }
     LaunchedEffect(skipAnimation) { if (skipAnimation) visible = true }
 
-    val accentColor = Color(0xFF4FC3F7)
-
     GlassCard(
         modifier = modifier
             .alpha(cardAlpha)
@@ -69,15 +57,13 @@ fun RadarMapCard(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 左侧：雷达示意图形
-            Box(
-                modifier = Modifier
-                    .size(72.dp)
-                    .clip(RoundedCornerShape(12.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                RadarThumbnail(accentColor = accentColor)
-            }
+            // 左侧：线性雷达图标
+            LucideIcon(
+                name = "radar",
+                contentDescription = "台风雷达图",
+                tint = Color.White,
+                size = 48.dp
+            )
 
             Spacer(modifier = Modifier.width(16.dp))
 
@@ -86,7 +72,7 @@ fun RadarMapCard(
                 modifier = Modifier.weight(1f)
             ) {
                 Text(
-                    text = "台风路径",
+                    text = "台风雷达图",
                     style = MaterialTheme.typography.titleMedium,
                     color = TextPrimary
                 )
@@ -110,107 +96,4 @@ fun RadarMapCard(
     }
 }
 
-/**
- * 雷达缩略图绘制。
- * 用 Canvas 画一个类似雷达扫描的圆形图案，带有半透明色块模拟降水区域。
- */
-@Composable
-private fun RadarThumbnail(
-    accentColor: Color,
-    modifier: Modifier = Modifier
-) {
-    val bgColor = Color(0xFF1A2A3A)
-    Canvas(modifier = modifier.fillMaxSize()) {
-        val canvasW = size.width
-        val canvasH = size.height
-        val cx = canvasW / 2f
-        val cy = canvasH / 2f
-        val radius = minOf(canvasW, canvasH) * 0.42f
 
-        // 暗色底圆
-        drawCircle(
-            color = bgColor,
-            radius = radius * 1.15f
-        )
-
-        // 雷达扫描环
-        val ringCount = 3
-        for (i in 1..ringCount) {
-            val r = radius * (i.toFloat() / ringCount)
-            drawCircle(
-                color = Color.White.copy(alpha = 0.08f),
-                radius = r,
-                style = Stroke(width = 1.dp.toPx())
-            )
-        }
-
-        // 十字线
-        drawLine(
-            color = Color.White.copy(alpha = 0.06f),
-            start = Offset(cx - radius, cy),
-            end = Offset(cx + radius, cy),
-            strokeWidth = 1.dp.toPx()
-        )
-        drawLine(
-            color = Color.White.copy(alpha = 0.06f),
-            start = Offset(cx, cy - radius),
-            end = Offset(cx, cy + radius),
-            strokeWidth = 1.dp.toPx()
-        )
-
-        // 模拟降水区域（绿色/蓝色半透明色块）
-        val precipColors = listOf(
-            Color(0xFF4FC3F7).copy(alpha = 0.3f),
-            Color(0xFF29B6F6).copy(alpha = 0.2f),
-            Color(0xFF81C784).copy(alpha = 0.25f),
-            Color(0xFF4DD0E1).copy(alpha = 0.15f)
-        )
-
-        // 绘制几块模拟降水区域
-        val blobs = listOf(
-            Offset(cx - radius * 0.35f, cy - radius * 0.15f) to 0.35f * radius,
-            Offset(cx + radius * 0.2f, cy - radius * 0.3f) to 0.25f * radius,
-            Offset(cx + radius * 0.3f, cy + radius * 0.2f) to 0.2f * radius,
-            Offset(cx - radius * 0.15f, cy + radius * 0.35f) to 0.15f * radius
-        )
-
-        blobs.forEachIndexed { index, (center, r) ->
-            val path = Path().apply {
-                val segments = 8
-                moveTo(
-                    center.x + r * kotlin.math.cos(0.0f),
-                    center.y + r * kotlin.math.sin(0.0f)
-                )
-                for (i in 1..segments) {
-                    val angle = (2.0f * kotlin.math.PI.toFloat() * i) / segments
-                    val variance = 0.7f + 0.3f * kotlin.math.sin(i * 3.7f + index)
-                    val px = center.x + r * variance * kotlin.math.cos(angle)
-                    val py = center.y + r * variance * kotlin.math.sin(angle)
-                    lineTo(px, py)
-                }
-                close()
-            }
-            drawPath(
-                path = path,
-                brush = Brush.radialGradient(
-                    colors = listOf(
-                        precipColors[index % precipColors.size].copy(alpha = 0.5f),
-                        precipColors[index % precipColors.size].copy(alpha = 0.0f)
-                    ),
-                    center = center,
-                    radius = r
-                )
-            )
-        }
-
-        // 中心点
-        drawCircle(
-            color = accentColor,
-            radius = 3.dp.toPx()
-        )
-        drawCircle(
-            color = accentColor.copy(alpha = 0.2f),
-            radius = 6.dp.toPx()
-        )
-    }
-}
