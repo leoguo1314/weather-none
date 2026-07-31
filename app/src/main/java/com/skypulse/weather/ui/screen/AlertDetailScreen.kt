@@ -67,6 +67,9 @@ internal fun AlertDetailScreen(
                 state = rememberLazyListState(
                     initialFirstVisibleItemIndex = safeInitialIndex
                 ),
+                // 底部留出 24dp contentPadding：卡片自身垂直内边距 8dp，合计 32dp，
+                // 与台风路径页卡片底部间距保持一致（navigationBarsPadding 之上再抬 32dp）
+                contentPadding = PaddingValues(bottom = 24.dp),
                 modifier = Modifier
                     .fillMaxSize()
                     .navigationBarsPadding()
