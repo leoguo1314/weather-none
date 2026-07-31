@@ -219,15 +219,27 @@ private fun createTyphoonMapContainer(
                 // - .typhoon-TitleNameDiv-mobile → 顶部台风标题编号
                 // - .current_checked_typhoon_div → 当前台风选中标识
                 // - .map_source_div   → 右下角「高德地图 - GS(2016)710号」及图层时间编号（雷达图/云图/风场时间戳）
+                // 另外将右侧 6 个功能按钮（图例/测距/风场/雷达/云图/台风列表）替换为
+                // App 风格：半透明深色圆角 + 白色线性图标（lucide 风格 SVG data-URI）。
                 // 说明：纯 CSS !important 优先级高于行内样式，无需常驻 MutationObserver；
                 // 这里再加几次一次性延迟隐藏兜底动态创建的元素（开销可忽略，不拖慢手势）。
-                val hideJs = """
+                val injectJs = """
                     (function() {
                         var css = [
                             '.copyright_div{display:none !important;}',
                             '.typhoon-TitleNameDiv-mobile{display:none !important;}',
                             '.current_checked_typhoon_div{display:none !important;}',
-                            '.map_source_div{display:none !important;}'
+                            '.map_source_div{display:none !important;}',
+                            '.right_btn_div{top:10px !important;padding:4px !important;}',
+                            '.tf_menu_list_div{width:42px !important;height:44px !important;margin-top:8px !important;padding-top:5px !important;background:rgba(13,20,28,0.55) !important;border:1px solid rgba(255,255,255,0.12) !important;border-radius:12px !important;box-shadow:0 2px 10px rgba(0,0,0,0.30) !important;opacity:1 !important;}',
+                            '.tf_menu_list_div .tf_menu_list_img{width:22px !important;height:22px !important;margin:0 auto 3px auto !important;background-size:22px 22px !important;background-repeat:no-repeat !important;background-position:center !important;}',
+                            '.tf_menu_list_font{font-size:10px !important;line-height:1 !important;color:#ffffff !important;text-align:center !important;}',
+                            '.tf_menu_list_div_tl .tf_menu_list_img,.tf_menu_list_div_tl.img_hover .tf_menu_list_img{background-image:url(\'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMiIgaGVpZ2h0PSIyMiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJtMTIuODMgMi4xOGEyIDIgMCAwIDAtMS42NiAwTDIuNiA2LjA4YTEgMSAwIDAgMCAwIDEuODNsOC41OCAzLjkxYTIgMiAwIDAgMCAxLjY2IDBsOC41OC0zLjlhMSAxIDAgMCAwIDAtMS44M1oiLz48cGF0aCBkPSJtMjIgMTcuNjUtOS4xNyA0LjE2YTIgMiAwIDAgMS0xLjY2IDBMMiAxNy42NSIvPjxwYXRoIGQ9Im0yMiAxMi42NS05LjE3IDQuMTZhMiAyIDAgMCAxLTEuNjYgMEwyIDEyLjY1Ii8+PC9zdmc+\') !important;}',
+                            '.tf_menu_list_div_cscj .tf_menu_list_img,.tf_menu_list_div_cscj.img_hover .tf_menu_list_img{background-image:url(\'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMiIgaGVpZ2h0PSIyMiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMjEuMyAxNS4zYTIuNCAyLjQgMCAwIDEgMCAzLjRsLTIuNiAyLjZhMi40IDIuNCAwIDAgMS0zLjQgMEwyLjcgOC43YTIuNDEgMi40MSAwIDAgMSAwLTMuNGwyLjYtMi42YTIuNDEgMi40MSAwIDAgMSAzLjQgMFoiLz48cGF0aCBkPSJtMTQuNSAxMi41IDItMiIvPjxwYXRoIGQ9Im0xMS41IDkuNSAyLTIiLz48cGF0aCBkPSJtOC41IDYuNSAyLTIiLz48cGF0aCBkPSJtMTcuNSAxNS41IDItMiIvPjwvc3ZnPg==\') !important;}',
+                            '.tf_menu_list_div_xsfc .tf_menu_list_img,.tf_menu_list_div_xsfc.img_hover .tf_menu_list_img{background-image:url(\'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMiIgaGVpZ2h0PSIyMiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMTIuOCAxOS42QTIgMiAwIDEgMCAxNCAxNkgyIi8+PHBhdGggZD0iTTE3LjUgOGEyLjUgMi41IDAgMSAxIDIgNEgyIi8+PHBhdGggZD0iTTkuOCA0LjRBMiAyIDAgMSAxIDExIDhIMiIvPjwvc3ZnPg==\') !important;}',
+                            '.tf_menu_list_div_qxld .tf_menu_list_img,.tf_menu_list_div_qxld.img_hover .tf_menu_list_img{background-image:url(\'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMiIgaGVpZ2h0PSIyMiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSIxMCIvPjxsaW5lIHgxPSIyMiIgeDI9IjE4IiB5MT0iMTIiIHkyPSIxMiIvPjxsaW5lIHgxPSI2IiB4Mj0iMiIgeTE9IjEyIiB5Mj0iMTIiLz48bGluZSB4MT0iMTIiIHgyPSIxMiIgeTE9IjYiIHkyPSIyIi8+PGxpbmUgeDE9IjEyIiB4Mj0iMTIiIHkxPSIyMiIgeTI9IjE4Ii8+PC9zdmc+\') !important;}',
+                            '.tf_menu_list_div_wxyt .tf_menu_list_img,.tf_menu_list_div_wxyt.img_hover .tf_menu_list_img{background-image:url(\'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMiIgaGVpZ2h0PSIyMiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMTcuNSAxOUg5YTcgNyAwIDEgMSA2LjcxLTloMS43OWE0LjUgNC41IDAgMSAxIDAgOVoiLz48L3N2Zz4=\') !important;}',
+                            '.tf_menu_list_div_tflb .tf_menu_list_img,.tf_menu_list_div_tflb.img_hover .tf_menu_list_img{background-image:url(\'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMiIgaGVpZ2h0PSIyMiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMyAxMmguMDEiLz48cGF0aCBkPSJNMyAxOGguMDEiLz48cGF0aCBkPSJNMyA2aC4wMSIvPjxwYXRoIGQ9Ik04IDEyaDEzIi8+PHBhdGggZD0iTTggMThoMTMiLz48cGF0aCBkPSJNOCA2aDEzIi8+PC9zdmc+\') !important;}'
                         ].join(' ');
                         var style = document.createElement('style');
                         style.textContent = css;
@@ -244,7 +256,7 @@ private fun createTyphoonMapContainer(
                         });
                     })();
                 """.trimIndent()
-                view?.evaluateJavascript(hideJs, null)
+                view?.evaluateJavascript(injectJs, null)
             }
 
             override fun onReceivedError(
