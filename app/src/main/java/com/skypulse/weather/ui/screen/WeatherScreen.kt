@@ -529,6 +529,13 @@ private fun dampedPullOffsetPx(
 }
 
 private fun AnimatedContentTransitionScope<AppScreen>.skyPulseScreenTransition(): ContentTransform {
+    // 台风路径是持续重绘的 WebView 全屏地图：过渡动画中的缩放/位移会强制 WebView
+    // 走分层合成，且动画期间页面仍在重绘，极易掉帧。这里仅用淡入淡出，接近浏览器体验。
+    if (initialState == AppScreen.RadarMap || targetState == AppScreen.RadarMap) {
+        return (fadeIn(animationSpec = tween(durationMillis = 250, easing = FastOutSlowInEasing)) togetherWith
+            fadeOut(animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing))) using
+            SizeTransform(clip = false)
+    }
     val direction = if (targetState.screenOrder >= initialState.screenOrder) 1 else -1
     val enterSpec = tween<IntOffset>(durationMillis = 300, easing = FastOutSlowInEasing)
     val exitSpec = tween<IntOffset>(durationMillis = 260, easing = FastOutSlowInEasing)

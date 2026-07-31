@@ -32,6 +32,7 @@
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTask"
+            android:hardwareAccelerated="true"
             android:theme="@style/Theme.SkyPulse">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
