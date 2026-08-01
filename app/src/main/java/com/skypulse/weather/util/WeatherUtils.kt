@@ -56,8 +56,9 @@ object WeatherUtils {
             GlassColors(
                 // 白天玻璃轻量化：降低罩色不透明度，让卡片「溶解」进蓝天、雨丝/星空透出，
                 // 接近 iOS 仅以模糊+微弱亮度差分层的观感（夜晚/雨雪分支保持深玻璃不变）。
-                tint = light.copy(alpha = 0.14f),
-                tintFallback = light.copy(alpha = 0.22f),
+                // tint 0.16 兼顾通透与文字对比度；fallback 无模糊，略提高到 0.26 保证层次。
+                tint = light.copy(alpha = 0.16f),
+                tintFallback = light.copy(alpha = 0.26f),
                 isLight = true
             )
         } else {

@@ -160,24 +160,24 @@ fun SunriseSunsetCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             // Horizontal progress bar with sun/moon indicator
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(20.dp)
+                    .height(24.dp)
             ) {
                 HorizontalSunProgress(
                     progress = cardState.progress,
                     showMoon = cardState.showMoon,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(20.dp)
+                        .height(24.dp)
                 )
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             // Bottom row: left time + right time
             Row(
@@ -226,7 +226,7 @@ private fun HorizontalSunProgress(
     val clampedProgress = progress.coerceIn(0f, 1f)
     val context = LocalContext.current
     val density = LocalDensity.current
-    val iconSizePx = remember(density) { with(density) { 18.dp.roundToPx() } }
+    val iconSizePx = remember(density) { with(density) { 22.dp.roundToPx() } }
     val iconName = if (showMoon) "moon" else "sun"
     val iconBitmap = remember(context, iconName, iconSizePx) {
         LucideSvgRenderer.renderBitmap(context, iconName, iconSizePx, "#FFFFFF")
@@ -235,7 +235,7 @@ private fun HorizontalSunProgress(
 
     Canvas(modifier = modifier) {
         val barY = size.height / 2
-        val barHeight = 3.dp.toPx()
+        val barHeight = 4.dp.toPx()
         val cornerRadius = barHeight / 2
         val barWidth = size.width
         val indicatorX = barWidth * clampedProgress
@@ -267,13 +267,6 @@ private fun HorizontalSunProgress(
         // Icon draw
         val drawSize = Size(iconSizePx.toFloat(), iconSizePx.toFloat())
         val iconOffset = Offset(indicatorX - iconSizePx / 2, barY - iconSizePx / 2)
-
-        // Outer glow
-        drawCircle(
-            color = Color.White.copy(alpha = 0.15f),
-            radius = iconSizePx * 0.7f,
-            center = Offset(indicatorX, barY)
-        )
 
         // Draw the icon bitmap
         if (iconBitmap != null) {

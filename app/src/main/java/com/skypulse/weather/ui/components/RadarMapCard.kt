@@ -54,7 +54,10 @@ fun RadarMapCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                // 垂直内边距 12dp，内容区最小高度 86dp（总高 12+12+86=110dp，比日出日落卡低 6dp，
+                // 视觉上保持一致）。
+                .padding(horizontal = 20.dp, vertical = 12.dp)
+                .heightIn(min = 86.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // 左侧：线性雷达图标

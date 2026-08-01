@@ -16,11 +16,11 @@ import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeChild
 
 /**
- * 玻璃卡片（无边框设计）。
+ * 玻璃卡片。
  *
- * 材质两层：
- * 1. 底层：haze 实时模糊（20dp 半径 + 微噪声防色带），
- *    让背后的雨丝/闪电/星空透过卡片隐约可见；
+ * 材质分层（自下而上）：
+ * 1. 底层：haze 实时模糊（小半径 + 零噪声），
+ *    让背后的雨丝/闪电/星空以轻柔的磨砂质感透出；
  *    低版本 / 省电模式自动降级为增强底色（haze fallbackTint 或纯底色）；
  * 2. 罩色：[GlassColors.tint]——由天气色相派生（白天提亮、雨雪夜晚压暗），
  *    卡片保留天气色彩个性，依靠模糊与明暗差自然分层，无描边，文字恒白。
@@ -52,8 +52,10 @@ fun GlassCard(
                         style = HazeStyle(
                             backgroundColor = theme.backgroundGradient[theme.backgroundGradient.size / 2],
                             tint = HazeTint(glass.tint),
-                            blurRadius = 20.dp,
-                            noiseFactor = 0.08f,
+                            // 小半径模糊：保留一层轻柔的磨砂，但更接近「清晰玻璃」的通透观感；
+                            // 噪声完全关闭（0f）：卡片内文字与图形保持最高锐度，不受颗粒干扰。
+                            blurRadius = 16.dp,
+                            noiseFactor = 0f,
                             fallbackTint = HazeTint(glass.tintFallback)
                         )
                     )
