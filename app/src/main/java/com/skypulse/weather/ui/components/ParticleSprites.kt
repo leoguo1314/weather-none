@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.cos
 import kotlin.math.exp
 import kotlin.math.pow
 import kotlin.math.roundToInt
@@ -121,6 +122,11 @@ object ParticleSprites {
 
     /** 流星雨滴（远景）：更弥散、更暗，配合冷蓝大气透视 */
     val rainMeteorFar: ImageBitmap by lazy { bakeRainMeteor(head = 0.55f, trail = 0.5f, coreHalf = 0.26f) }
+
+    // ============ 六角雪花（主臂 + 分支 + 中心亮核） ============
+
+    /** 六角雪花精灵：6 根主臂等角分布，每根中段分叉两条小支臂，中心亮核，白色 */
+    val snowflakeSprite: ImageBitmap by lazy { bakeSnowflake() }
 
     // ============ 冷色电影感配色（大气透视分级） ============
 
@@ -252,6 +258,54 @@ object ParticleSprites {
             }
         }
         bitmap.setPixels(pixels, 0, w, 0, 0, w, h)
+        return bitmap.asImageBitmap()
+    }
+
+    /**
+     * 烘焙六角雪花精灵（96px）：
+     * - 6 根主臂等角分布（60°），从中心延伸到边缘，圆头笔触；
+     * - 每根主臂中段分叉两条小支臂（±约 20°）；
+     * - 中心亮核；整体带抗锯齿，缩放绘制仍清晰锐利。
+     */
+    private fun bakeSnowflake(): ImageBitmap {
+        val size = 96
+        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = android.graphics.Canvas(bitmap)
+        val c = size / 2f
+        val white = Color.White.toArgb()
+        val armPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = white
+            strokeWidth = size * 0.05f
+            strokeCap = Paint.Cap.ROUND
+            strokeJoin = Paint.Join.ROUND
+        }
+        val branchPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = white
+            strokeWidth = size * 0.028f
+            strokeCap = Paint.Cap.ROUND
+        }
+        for (i in 0 until 6) {
+            val rad = Math.toRadians(i * 60.0)
+            val cosA = cos(rad).toFloat()
+            val sinA = sin(rad).toFloat()
+            val armLen = size * 0.40f
+            // 主臂
+            canvas.drawLine(c, c, c + cosA * armLen, c + sinA * armLen, armPaint)
+            // 主臂中段的两条分叉小支臂（±约 20°）
+            val mx = c + cosA * armLen * 0.62f
+            val my = c + sinA * armLen * 0.62f
+            val bl = armLen * 0.42f
+            for (sign in intArrayOf(-1, 1)) {
+                val bRad = rad + sign * 0.35
+                canvas.drawLine(
+                    mx, my,
+                    mx + (cos(bRad) * bl).toFloat(), my + (sin(bRad) * bl).toFloat(),
+                    branchPaint
+                )
+            }
+        }
+        // 中心亮核
+        canvas.drawCircle(c, c, size * 0.08f, armPaint)
         return bitmap.asImageBitmap()
     }
 

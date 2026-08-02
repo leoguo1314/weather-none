@@ -25,9 +25,9 @@ fun skyGradientColorStops(colors: List<Color>): Array<Pair<Float, Color>> =
     colors.zip(SkyGradientStops) { color, stop -> stop to color }.toTypedArray()
 
 /**
- * 昼夜相位：用于晴天/多云场景在日出、日落前后约 1 小时切换清晨/傍晚主题。
- * - MORNING：日出时刻 ± 1 小时
- * - EVENING：日落时刻 ± 1 小时
+ * 昼夜相位：用于晴天/多云场景在日出、日落前后各 30 分钟切换清晨/傍晚主题。
+ * - MORNING：日出时刻 ± 30 分钟（共 1 小时）
+ * - EVENING：日落时刻 ± 30 分钟（共 1 小时）
  * - DAY / NIGHT：其余时段（由 [WeatherUtils.isCurrentlyDay] 判定）
  */
 enum class DayPhase { MORNING, DAY, EVENING, NIGHT }
@@ -57,7 +57,8 @@ object WeatherUtils {
         // 卡片因此保留天气色彩个性，且无需逐天气手工调色；文字恒白可读。
         val hue = background[background.size / 2]
         val precipOrSnow = skycon?.let {
-            it.contains("RAIN") || it.contains("STORM") || it.contains("SNOW")
+            it.contains("RAIN") || it.contains("STORM") || it.contains("SNOW") ||
+                it == "THUNDER_SHOWER" || it == "SLEET"
         } == true
         val glass = if (isDay && !precipOrSnow) {
             val light = lerpColor(saturateColor(hue, 1.4f), Color.White, 0.55f)
@@ -116,7 +117,7 @@ object WeatherUtils {
     fun getPrecipitationIconColor(skycon: String?, isDay: Boolean): Color = Color.White
 
     /**
-     * 计算当前昼夜相位：优先用日出/日落天文时刻 ± 1 小时判定清晨/傍晚，
+     * 计算当前昼夜相位：优先用日出/日落天文时刻 ± 30 分钟判定清晨/傍晚（各 1 小时），
      * 无天文数据时回退到固定 06:00 / 18:00 节点。
      */
     fun getDayPhase(
@@ -128,8 +129,8 @@ object WeatherUtils {
         val sunriseMin = parseTimeMinutes(astro?.sunrise?.time) ?: 6 * 60
         val sunsetMin = parseTimeMinutes(astro?.sunset?.time) ?: 18 * 60
         return when {
-            minuteOfDay in (sunriseMin - 60) until (sunriseMin + 60) -> DayPhase.MORNING
-            minuteOfDay in (sunsetMin - 60) until (sunsetMin + 60) -> DayPhase.EVENING
+            minuteOfDay in (sunriseMin - 30) until (sunriseMin + 30) -> DayPhase.MORNING
+            minuteOfDay in (sunsetMin - 30) until (sunsetMin + 30) -> DayPhase.EVENING
             isCurrentlyDay(daily, now) -> DayPhase.DAY
             else -> DayPhase.NIGHT
         }
@@ -179,8 +180,11 @@ object WeatherUtils {
             skycon.contains("CLEAR") -> if (isDay) SunnyGradient else SunnyNightGradient
             skycon.contains("PARTLY_CLOUDY") -> if (isDay) PartialCloudGradient else PartialCloudNightGradient
             skycon.contains("CLOUDY") -> if (isDay) CloudyGradient else CloudyNightGradient
-            skycon.contains("RAIN") || skycon.contains("STORM") -> if (isDay) RainyGradient else RainyNightGradient
+            // 雪必须先于 STORM 判断：STORM_SNOW 同时含 "STORM"，必须归为雪天
             skycon.contains("SNOW") -> if (isDay) SnowyGradient else SnowyNightGradient
+            skycon.contains("RAIN") || skycon.contains("STORM") -> if (isDay) RainyGradient else RainyNightGradient
+            // 雷阵雨 / 雨夹雪不含 RAIN/STORM 子串，显式归类为雨天（深色背景）
+            skycon == "THUNDER_SHOWER" || skycon == "SLEET" -> if (isDay) RainyGradient else RainyNightGradient
             skycon.contains("HAZE") || skycon == "FOG" || skycon == "DUST" || skycon == "SAND" -> if (isDay) HazeGradient else HazeNightGradient
             skycon == "WIND" -> if (isDay) WindyGradient else WindyNightGradient
             else -> if (isDay) SunnyGradient else SunnyNightGradient

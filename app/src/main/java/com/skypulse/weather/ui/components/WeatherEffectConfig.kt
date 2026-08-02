@@ -19,34 +19,35 @@ fun parseWeatherIntensity(skycon: String?): WeatherIntensity {
     if (skycon == null) return WeatherIntensity()
 
     return when (skycon) {
-        // 雨天强度
+        // 雨天强度：四档雨量统一按「大雨」形态处理（尺寸/粗细一致），
+        // 强度由粒子数量与速度共同体现：数量 0.4/0.7/1.1/1.5，速度 0.8/0.8/1.1/1.5；透明度统一 0.6。
         "LIGHT_RAIN" -> WeatherIntensity(
-            particleCount = 0.7f,
-            speed = 0.75f,
-            size = 0.85f,
-            alpha = 0.72f,
-            thickness = 0.78f
+            particleCount = 0.4f,
+            speed = 0.8f,
+            size = 1.1f,
+            alpha = 0.6f,
+            thickness = 1.35f
         )
         "MODERATE_RAIN" -> WeatherIntensity(
-            particleCount = 1f,
-            speed = 1f,
-            size = 1f,
-            alpha = 0.85f,
-            thickness = 1f
+            particleCount = 0.7f,
+            speed = 0.8f,
+            size = 1.1f,
+            alpha = 0.6f,
+            thickness = 1.35f
         )
         "HEAVY_RAIN" -> WeatherIntensity(
-            particleCount = 1.8f,
-            speed = 1.35f,
-            size = 1.2f,
-            alpha = 0.95f,
+            particleCount = 1.1f,
+            speed = 1.1f,
+            size = 1.1f,
+            alpha = 0.6f,
             thickness = 1.35f
         )
         "STORM_RAIN" -> WeatherIntensity(
-            particleCount = 2.5f,
-            speed = 1.7f,
-            size = 1.4f,
-            alpha = 1f,
-            thickness = 1.6f
+            particleCount = 1.5f,
+            speed = 1.5f,
+            size = 1.1f,
+            alpha = 0.6f,
+            thickness = 1.35f
         )
 
         // 雪天强度

@@ -15,6 +15,7 @@ import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import kotlin.math.roundToInt
@@ -44,8 +45,18 @@ private const val RainSlantRad = -0.17453293f
 /** tan(10°) 绝对值：vx = vy * RainSlantTan 时运动方向与 -θ 渲染倾斜一致 */
 private const val RainSlantTan = 0.17632698f
 
-/** 流星雨滴整体缩放倍率：形态不变，仅放大尺寸（当前为 2 倍） */
-private const val RainMeteorScale = 2f
+/**
+ * 流星雨滴基础缩放倍率：形态不变，仅放大尺寸。
+ * 四档雨量（小雨/中雨/大雨/暴雨）的 size 统一为 1.1（按大雨标准），
+ * 雨量场景只以粒子数量区分，不再按大小/速度/透明度区分。
+ */
+private const val RainMeteorScale = 3f
+
+/**
+ * 雨滴长度缩短系数：以 [RainMeteorScale] 倍长度为基准再缩短 1/2（即保留 1/2），
+ * 仅影响拖尾长度，宽度不受影响；配合基准倍率后总长度倍率 = 3 × (1/2) = 1.5×。
+ */
+private const val RainMeteorLengthFactor = 1f / 2f
 
 /** 闪电序列总时长（秒） */
 private const val LightningDuration = 0.5f
@@ -200,7 +211,7 @@ private fun wrap(value: Float, modulo: Float): Float = ((value % modulo) + modul
 /**
  * 绘制流星雨滴（无风时走原路径零额外开销；有风时绕顶点旋转）
  * 头部亮核 + 长拖尾，拖尾带清晰度波动与半透明质感；
- * 宽高统一放大 [RainMeteorScale] 倍（形态不变，更醒目）；
+ * 宽度放大 [RainMeteorScale] 倍，长度再乘 [RainMeteorLengthFactor]（当前缩短 2/3）；
  * 近景用 [ParticleSprites.rainMeteorNear]，远景用 [ParticleSprites.rainMeteorFar]。
  * @param tint 冷色电影感着色（大气透视分级），null 表示保持原白色
  */
@@ -211,7 +222,7 @@ private fun DrawScope.drawRainStreak(
     val sprite = if (hard) ParticleSprites.rainMeteorNear else ParticleSprites.rainMeteorFar
     val colorFilter = tint?.let { ParticleSprites.tint(it) }
     val scaledWidth = width * RainMeteorScale
-    val scaledLength = length * RainMeteorScale
+    val scaledLength = length * RainMeteorScale * RainMeteorLengthFactor
     if (angle == 0f) {
         drawStreak(sprite, x, y, scaledWidth, scaledLength, alpha, colorFilter)
     } else {
@@ -219,6 +230,32 @@ private fun DrawScope.drawRainStreak(
             rotate(degrees = angle * RadToDeg, pivot = Offset(x, y))
         }) {
             drawStreak(sprite, x, y, scaledWidth, scaledLength, alpha, colorFilter)
+        }
+    }
+}
+
+/**
+ * 绘制旋转中的六角雪花（精灵化：零逐帧分配）
+ * @param diameter 雪花视觉直径
+ * @param rotationDeg 自旋角度（度）
+ */
+private fun DrawScope.drawSnowflake(
+    sprite: ImageBitmap,
+    x: Float, y: Float,
+    diameter: Float,
+    alpha: Float,
+    rotationDeg: Float
+) {
+    if (alpha <= 0f || diameter <= 0f) return
+    val radius = diameter / 2f
+    val rotation = ((rotationDeg % 360f) + 360f) % 360f
+    if (rotation == 0f) {
+        drawGlow(sprite, x, y, radius, alpha)
+    } else {
+        withTransform({
+            rotate(degrees = rotation, pivot = Offset(x, y))
+        }) {
+            drawGlow(sprite, x, y, radius, alpha)
         }
     }
 }
@@ -598,6 +635,7 @@ private fun RainEffect(
 
         Canvas(modifier = Modifier.fillMaxSize()) {
             val speedMultiplier = intensity.speed
+            val sizeMultiplier = intensity.size
             val alphaMultiplier = intensity.alpha
             val thicknessMultiplier = intensity.thickness
 
@@ -614,8 +652,8 @@ private fun RainEffect(
                 val angle = RainSlantRad
 
                 drawRainStreak(
-                    x = x, y = y, length = drop.length,
-                    width = drop.thickness * thicknessMultiplier * 0.5f,
+                    x = x, y = y, length = drop.length * sizeMultiplier,
+                    width = drop.thickness * thicknessMultiplier * sizeMultiplier * 0.5f,
                     alpha = drop.alpha * alphaMultiplier * 0.42f,
                     angle = angle, hard = false, tint = ParticleSprites.RainTintFar
                 )
@@ -634,8 +672,8 @@ private fun RainEffect(
                 val angle = RainSlantRad
 
                 drawRainStreak(
-                    x = x, y = y, length = drop.length,
-                    width = drop.thickness * thicknessMultiplier * 0.7f,
+                    x = x, y = y, length = drop.length * sizeMultiplier,
+                    width = drop.thickness * thicknessMultiplier * sizeMultiplier * 0.7f,
                     alpha = drop.alpha * alphaMultiplier * 0.62f,
                     angle = angle, hard = false, tint = ParticleSprites.RainTintFar
                 )
@@ -667,8 +705,8 @@ private fun RainEffect(
                 val angle = RainSlantRad
 
                 drawRainStreak(
-                    x = x, y = y, length = drop.length,
-                    width = drop.thickness * thicknessMultiplier * 0.85f,
+                    x = x, y = y, length = drop.length * sizeMultiplier,
+                    width = drop.thickness * thicknessMultiplier * sizeMultiplier * 0.85f,
                     alpha = drop.alpha * alphaMultiplier * 0.88f,
                     angle = angle, hard = true, tint = ParticleSprites.RainTintNear
                 )
@@ -687,8 +725,8 @@ private fun RainEffect(
                 val angle = RainSlantRad
 
                 drawRainStreak(
-                    x = x, y = y, length = drop.length,
-                    width = drop.thickness * thicknessMultiplier * 1.2f,
+                    x = x, y = y, length = drop.length * sizeMultiplier,
+                    width = drop.thickness * thicknessMultiplier * sizeMultiplier * 1.2f,
                     alpha = drop.alpha * alphaMultiplier * 1f,
                     angle = angle, hard = true, tint = ParticleSprites.RainTintNear
                 )
@@ -837,19 +875,13 @@ private fun SnowEffect(
                 val adjustedSize = flake.size * sizeMultiplier
                 val adjustedAlpha = flake.alpha * alphaMultiplier
 
-                // 外层光晕（精灵化）
-                drawGlow(
-                    sprite = ParticleSprites.glowSoft,
-                    centerX = x, centerY = y,
-                    radius = adjustedSize * 2.5f,
-                    alpha = adjustedAlpha * 0.4f
-                )
-
-                // 内层实心
-                drawCircle(
-                    color = Color.White.copy(alpha = adjustedAlpha),
-                    radius = adjustedSize * 0.6f,
-                    center = Offset(x, y)
+                // 六角雪花：带缓慢自旋，形态清晰可辨（非光点）
+                drawSnowflake(
+                    sprite = ParticleSprites.snowflakeSprite,
+                    x = x, y = y,
+                    diameter = adjustedSize * 4f,
+                    alpha = (adjustedAlpha * 1.5f).coerceAtMost(1f),
+                    rotationDeg = flake.rotationSpeed * animationTime * 360f
                 )
             }
         }
@@ -1142,6 +1174,7 @@ private fun ThunderShowerEffect(
         Canvas(modifier = Modifier.fillMaxSize()) {
             // 优化: 根据强度调整参数
             val speedMultiplier = intensity.speed
+            val sizeMultiplier = intensity.size
             val alphaMultiplier = intensity.alpha
             val thicknessMultiplier = intensity.thickness
 
@@ -1159,8 +1192,8 @@ private fun ThunderShowerEffect(
 
                 // 雨滴垂直下落（电影感运动模糊雨丝，有风时按倾斜角绘制）
                 drawRainStreak(
-                    x = x, y = y, length = drop.length,
-                    width = drop.thickness * thicknessMultiplier * 1.2f,
+                    x = x, y = y, length = drop.length * sizeMultiplier,
+                    width = drop.thickness * thicknessMultiplier * sizeMultiplier * 1.2f,
                     alpha = drop.alpha * alphaMultiplier * 1f,
                     angle = angle, hard = true, tint = ParticleSprites.RainTintNear
                 )
@@ -1303,8 +1336,8 @@ private fun SleetEffect(
 
                 // 雨滴垂直下落（电影感运动模糊雨丝）
                 drawRainStreak(
-                    x = x, y = y, length = drop.length,
-                    width = drop.thickness * thicknessMultiplier * 1.0f,
+                    x = x, y = y, length = drop.length * sizeMultiplier,
+                    width = drop.thickness * thicknessMultiplier * sizeMultiplier * 1.0f,
                     alpha = drop.alpha * alphaMultiplier * 0.9f,
                     angle = angle, hard = false, tint = ParticleSprites.RainTintNear
                 )
@@ -1324,17 +1357,13 @@ private fun SleetEffect(
                 val adjustedSize = flake.size * sizeMultiplier
                 val adjustedAlpha = flake.alpha * alphaMultiplier
 
-                drawGlow(
-                    sprite = ParticleSprites.glowSoft,
-                    centerX = x, centerY = y,
-                    radius = adjustedSize * 2f,
-                    alpha = adjustedAlpha * 0.4f
-                )
-
-                drawCircle(
-                    color = Color.White.copy(alpha = adjustedAlpha * 0.8f),
-                    radius = adjustedSize * 0.5f,
-                    center = Offset(x, y)
+                // 六角雪花：带缓慢自旋，形态清晰可辨（非光点）
+                drawSnowflake(
+                    sprite = ParticleSprites.snowflakeSprite,
+                    x = x, y = y,
+                    diameter = adjustedSize * 4f,
+                    alpha = (adjustedAlpha * 1.5f).coerceAtMost(1f),
+                    rotationDeg = flake.rotationSpeed * animationTime * 360f
                 )
             }
         }
@@ -1413,7 +1442,8 @@ private data class Snowflake(
     val speedY: Float,
     val wobbleAmplitude: Float,
     val wobbleSpeed: Float,
-    val wobbleOffset: Float
+    val wobbleOffset: Float,
+    val rotationSpeed: Float // 每秒自旋圈数（缓慢）
 )
 
 private data class WindP(
@@ -1546,7 +1576,8 @@ private fun generateSnowflakes(count: Int, width: Float, height: Float): List<Sn
             speedY = Random.nextFloat() * 1.8f + 0.8f,
             wobbleAmplitude = Random.nextFloat() * 25f + 8f,
             wobbleSpeed = Random.nextFloat() * 1.8f + 0.8f,
-            wobbleOffset = Random.nextFloat() * PI.toFloat() * 2f
+            wobbleOffset = Random.nextFloat() * PI.toFloat() * 2f,
+            rotationSpeed = Random.nextFloat() * 0.20f + 0.05f // 每秒 0.05-0.25 圈（18-90°/s）
         )
     }
 }
