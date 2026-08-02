@@ -1,4 +1,4 @@
-﻿package com.skypulse.weather.ui.screen
+package com.skypulse.weather.ui.screen
 
 import android.app.Activity
 import androidx.activity.compose.BackHandler
@@ -51,6 +51,7 @@ import com.skypulse.weather.data.ThemeMode
 import com.skypulse.weather.data.WeatherSettings
 import com.skypulse.weather.domain.CitySelectionPolicy
 import com.skypulse.weather.model.sortedByPublishTimeDescending
+import com.skypulse.weather.util.DayPhase
 import com.skypulse.weather.util.WeatherUtils
 import com.skypulse.weather.ui.components.RadarMapCard
 import com.skypulse.weather.ui.components.*
@@ -166,7 +167,7 @@ fun WeatherScreen(
         viewModel.fetchWeather()
     }
 
-    val skycon = when (val s = uiState) {
+    val realSkycon = when (val s = uiState) {
         is WeatherUiState.Success -> s.weather.result?.realtime?.skycon
         else -> null
     }
@@ -174,6 +175,14 @@ fun WeatherScreen(
         is WeatherUiState.Success -> s.weather.result?.daily
         else -> null
     }
+    // 开发者选项 - 天气背景调试：仅在开发者选项开启且选中预设时，
+    // 强制覆盖当前展示城市的主题/天气/配色
+    val debugPreset = if (settings.developerModeEnabled) settings.debugWeatherPreset else null
+    val skycon = debugPreset?.skycon ?: realSkycon
+    // 昼夜相位：调试预设显式指定（清晨/傍晚）或按预设昼夜推导（正午=DAY/夜晚=NIGHT）；
+    // 否则按真实日出日落时刻计算，晴天/多云在日出日落 ±1h 自动切清晨/傍晚主题
+    val phase = debugPreset?.let { it.phase ?: (if (it.isDay) DayPhase.DAY else DayPhase.NIGHT) }
+        ?: WeatherUtils.getDayPhase(daily)
     // 实时风数据（驱动粒子动画：雨丝倾斜、云层漂移方向）
     val wind = when (val s = uiState) {
         is WeatherUiState.Success -> s.weather.result?.realtime?.wind?.let { w ->
@@ -187,9 +196,9 @@ fun WeatherScreen(
         }
         else -> null
     }
-    val isDay = WeatherUtils.isCurrentlyDay(daily)
-    val weatherTheme = remember(skycon, daily, isDay) {
-        WeatherUtils.getWeatherTheme(skycon, isDay)
+    val isDay = phase != DayPhase.NIGHT
+    val weatherTheme = remember(skycon, isDay, phase) {
+        WeatherUtils.getWeatherTheme(skycon, isDay, phase)
     }
 
     BackHandler(enabled = currentScreen != AppScreen.CityDetail) {
@@ -270,7 +279,12 @@ fun WeatherScreen(
                         deviceId = settingsViewModel.getDeviceId()
                     )
                 }
-                WeatherBackground(skycon = skycon, daily = daily, wind = wind) {
+                WeatherBackground(
+                    skycon = skycon,
+                    daily = daily,
+                    wind = wind,
+                    phase = phase
+                ) {
                     Box(modifier = Modifier.fillMaxSize()) {
                         when (val state = uiState) {
                             is WeatherUiState.Loading -> {
@@ -387,6 +401,7 @@ fun WeatherScreen(
                                                     scrollState = pageScrollState,
                                                     settings = settings,
                                                     isPremium = isPremium,
+                                                    debugSkycon = debugPreset?.skycon,
                                                     onRefresh = { viewModel.refresh() },
                                                     onAlertClick = { viewModel.navigateToAlertDetail(0) },
                                                     showBookmark = showBookmarkBtn,
@@ -475,6 +490,9 @@ fun WeatherScreen(
                     onShowCardMinutelyChange = { settingsViewModel.setShowCardMinutely(it) },
                     onShowCardTyphoonChange = { settingsViewModel.setShowCardTyphoon(it) },
                     onThemeModeChange = { settingsViewModel.setThemeMode(it) },
+                    onVersionDoubleTap = { settingsViewModel.onVersionDoubleTap() },
+                    onDeveloperModeToggle = { settingsViewModel.setDeveloperModeEnabled(it) },
+                    onDebugWeatherPresetChange = { settingsViewModel.setDebugWeatherPreset(it) },
                     isPremium = isPremium,
                     activatedAt = settingsViewModel.getActivatedAt(),
                     deviceId = settingsViewModel.getDeviceId(),
@@ -627,6 +645,7 @@ private fun WeatherContentBody(
     scrollState: ScrollState,
     settings: WeatherSettings,
     isPremium: Boolean = true,
+    debugSkycon: String? = null,
     onRefresh: () -> Unit = {},
     onAlertClick: (Int) -> Unit = {},
     showBookmark: Boolean = false,
@@ -696,7 +715,8 @@ private fun WeatherContentBody(
             CurrentWeather(
                 realtime = realtime,
                 todayHigh = todayTemp?.max,
-                todayLow = todayTemp?.min
+                todayLow = todayTemp?.min,
+                skyconOverride = debugSkycon
             )
 
             Spacer(modifier = Modifier.height(32.dp))

@@ -5,6 +5,7 @@ import android.widget.Toast
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -20,6 +21,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -31,6 +33,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import com.skypulse.weather.BuildConfig
 import com.skypulse.weather.data.ActivationResult
+import com.skypulse.weather.data.DebugWeatherPreset
 import com.skypulse.weather.data.ThemeMode
 import com.skypulse.weather.data.WeatherSettings
 import com.skypulse.weather.ui.components.MembershipDialog
@@ -61,6 +64,9 @@ fun SettingsScreen(
     onShowCardMinutelyChange: (Boolean) -> Unit,
     onShowCardTyphoonChange: (Boolean) -> Unit,
     onThemeModeChange: (ThemeMode) -> Unit,
+    onVersionDoubleTap: () -> Boolean = { false },
+    onDeveloperModeToggle: (Boolean) -> Unit = {},
+    onDebugWeatherPresetChange: (DebugWeatherPreset?) -> Unit = {},
     isPremium: Boolean = false,
     activatedAt: Long = 0L,
     deviceId: String = "",
@@ -69,6 +75,9 @@ fun SettingsScreen(
     val context = LocalContext.current
     val page = LocalSecondaryPageTheme.current
     var showMembershipDialog by remember { mutableStateOf(false) }
+
+    // 开发者选项彩蛋：双击设置页底部版本号开启
+    var weatherDebugExpanded by remember { mutableStateOf(false) }
 
     val isChecking = updateState is UpdateCheckResult.Checking
     // 仅在检查更新期间驱动旋转动画；停止检查后协程自动取消，不再每帧空转耗电
@@ -166,6 +175,70 @@ fun SettingsScreen(
                                 )
                             },
                             onClick = { showMembershipDialog = true }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Developer options（彩蛋开启，点击会员卡片 7 次）
+                if (settings.developerModeEnabled) {
+                    SectionHeader("开发者选项")
+                    IosCard {
+                        SimpleItem(
+                            title = "天气背景调试",
+                            subtitle = buildAnnotatedString {
+                                append("当前：")
+                                withStyle(SpanStyle(color = page.accentBlue, fontWeight = FontWeight.Medium)) {
+                                    append(settings.debugWeatherPreset?.displayName ?: "自动（跟随实际天气）")
+                                }
+                            },
+                            trailing = {
+                                LucideIcon(
+                                    name = "chevron-down",
+                                    contentDescription = null,
+                                    size = 18.dp,
+                                    tint = page.textSecondary,
+                                    modifier = Modifier.rotate(if (weatherDebugExpanded) 180f else 0f)
+                                )
+                            },
+                            onClick = { weatherDebugExpanded = !weatherDebugExpanded }
+                        )
+                        if (weatherDebugExpanded) {
+                            IosDivider()
+                            RadioItem(
+                                title = "自动（跟随实际天气）",
+                                selected = settings.debugWeatherPreset == null,
+                                onClick = { onDebugWeatherPresetChange(null) }
+                            )
+                            DebugWeatherPreset.entries.forEach { preset ->
+                                IosDivider()
+                                RadioItem(
+                                    title = preset.displayName,
+                                    selected = settings.debugWeatherPreset == preset,
+                                    onClick = { onDebugWeatherPresetChange(preset) }
+                                )
+                            }
+                        }
+                        IosDivider()
+                        SimpleItem(
+                            title = "版本信息",
+                            subtitle = AnnotatedString("v${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})"),
+                            onClick = { }
+                        )
+                        IosDivider()
+                        SimpleItem(
+                            title = "关闭开发者选项",
+                            titleColor = page.textSecondary,
+                            trailing = {
+                                LucideIcon(
+                                    name = "power",
+                                    contentDescription = null,
+                                    size = 18.dp,
+                                    tint = page.textSecondary
+                                )
+                            },
+                            onClick = { onDeveloperModeToggle(false) }
                         )
                     }
                 }
@@ -587,7 +660,19 @@ fun SettingsScreen(
                     color = page.textSecondary,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 22.dp),
+                        .padding(bottom = 22.dp)
+                        .pointerInput(Unit) {
+                            // 开发者选项彩蛋：双击版本号开启
+                            detectTapGestures(
+                                onDoubleTap = {
+                                    if (onVersionDoubleTap()) {
+                                        Toast.makeText(context, "已开启开发者选项", Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        Toast.makeText(context, "开发者选项已开启", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            )
+                        },
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center
                 )
             }

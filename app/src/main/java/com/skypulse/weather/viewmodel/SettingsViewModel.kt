@@ -3,6 +3,7 @@ package com.skypulse.weather.viewmodel
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import com.skypulse.weather.data.ActivationResult
+import com.skypulse.weather.data.DebugWeatherPreset
 import com.skypulse.weather.data.MembershipRepository
 import com.skypulse.weather.data.SettingsRepository
 import com.skypulse.weather.data.ThemeMode
@@ -61,6 +62,13 @@ class SettingsViewModel @Inject constructor(
     fun setShowCardMinutely(enabled: Boolean) = settingsRepository.setShowCardMinutely(enabled)
     fun setShowCardTyphoon(enabled: Boolean) = settingsRepository.setShowCardTyphoon(enabled)
     fun setThemeMode(mode: ThemeMode) = settingsRepository.setThemeMode(mode)
+
+    /** 设置页底部版本号双击开启开发者选项，返回是否刚刚开启 */
+    fun onVersionDoubleTap(): Boolean = settingsRepository.enableDeveloperMode()
+
+    fun setDeveloperModeEnabled(enabled: Boolean) = settingsRepository.setDeveloperModeEnabled(enabled)
+
+    fun setDebugWeatherPreset(preset: DebugWeatherPreset?) = settingsRepository.setDebugWeatherPreset(preset)
 
     private fun updateAlertSetting(update: () -> Unit) {
         update()

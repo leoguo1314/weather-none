@@ -10,6 +10,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import com.skypulse.weather.model.DailyForecast
+import com.skypulse.weather.util.DayPhase
 import com.skypulse.weather.util.skyGradientColorStops
 import com.skypulse.weather.util.WeatherUtils
 import dev.chrisbanes.haze.HazeState
@@ -32,10 +33,13 @@ fun WeatherBackground(
     wind: WindInfo? = null,
     modifier: Modifier = Modifier,
     showParticles: Boolean = true,
+    phase: DayPhase? = null,
     content: @Composable BoxScope.() -> Unit
 ) {
-    val isDay = WeatherUtils.isCurrentlyDay(daily)
-    val gradientColors = WeatherUtils.getWeatherGradient(skycon, isDay)
+    // 清晨/傍晚与白天均视为「有太阳」的白天；NIGHT 为夜晚。
+    // 未传入 phase（如开发者选项强制调试）时回退到按日出日落判断。
+    val isDay = phase?.let { it != DayPhase.NIGHT } ?: WeatherUtils.isCurrentlyDay(daily)
+    val gradientColors = WeatherUtils.getWeatherGradient(skycon, isDay, phase)
 
     // 背景色平滑过渡：天气/昼夜切换时逐色插值（渐变列表恒为 5 色），避免硬切。
     // 首次组合时 animateColorAsState 直接取目标值，不会出现入场闪变。

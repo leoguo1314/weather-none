@@ -39,10 +39,13 @@ import kotlin.random.Random
 /** 弧度转角度 */
 private const val RadToDeg = 57.29578f
 
-/** 雨丝固定倾斜角（弧度）：10° */
-private const val RainSlantRad = 0.17453293f
-/** tan(10°)：雨丝水平速度 vx = vy * 此值，使运动轨迹方向与渲染倾斜一致 */
+/** 雨丝固定倾斜角（弧度）：-10°，雨滴从左上方落向右下方（底部摆向右侧） */
+private const val RainSlantRad = -0.17453293f
+/** tan(10°) 绝对值：vx = vy * RainSlantTan 时运动方向与 -θ 渲染倾斜一致 */
 private const val RainSlantTan = 0.17632698f
+
+/** 流星雨滴整体缩放倍率：形态不变，仅放大尺寸（当前为 2 倍） */
+private const val RainMeteorScale = 2f
 
 /** 闪电序列总时长（秒） */
 private const val LightningDuration = 0.5f
@@ -195,22 +198,27 @@ private fun computeWindSlant(wind: WindInfo?): Float {
 private fun wrap(value: Float, modulo: Float): Float = ((value % modulo) + modulo) % modulo
 
 /**
- * 绘制雨丝（无风时走原路径零额外开销；有风时绕顶点旋转）
+ * 绘制流星雨滴（无风时走原路径零额外开销；有风时绕顶点旋转）
+ * 头部亮核 + 长拖尾，拖尾带清晰度波动与半透明质感；
+ * 宽高统一放大 [RainMeteorScale] 倍（形态不变，更醒目）；
+ * 近景用 [ParticleSprites.rainMeteorNear]，远景用 [ParticleSprites.rainMeteorFar]。
  * @param tint 冷色电影感着色（大气透视分级），null 表示保持原白色
  */
 private fun DrawScope.drawRainStreak(
     x: Float, y: Float, length: Float, width: Float, alpha: Float,
     angle: Float, hard: Boolean, tint: Color? = null
 ) {
-    val sprite = if (hard) ParticleSprites.rainStreakPro else ParticleSprites.rainStreakProFar
+    val sprite = if (hard) ParticleSprites.rainMeteorNear else ParticleSprites.rainMeteorFar
     val colorFilter = tint?.let { ParticleSprites.tint(it) }
+    val scaledWidth = width * RainMeteorScale
+    val scaledLength = length * RainMeteorScale
     if (angle == 0f) {
-        drawStreak(sprite, x, y, width, length, alpha, colorFilter)
+        drawStreak(sprite, x, y, scaledWidth, scaledLength, alpha, colorFilter)
     } else {
         withTransform({
             rotate(degrees = angle * RadToDeg, pivot = Offset(x, y))
         }) {
-            drawStreak(sprite, x, y, width, length, alpha, colorFilter)
+            drawStreak(sprite, x, y, scaledWidth, scaledLength, alpha, colorFilter)
         }
     }
 }
@@ -597,10 +605,10 @@ private fun RainEffect(
             raindropsFar.forEach { drop ->
                 val speedFactor = 80f * speedMultiplier
                 val vy = drop.speedY * speedFactor
-                // 横向速度与渲染倾斜同方向：渲染时雨丝绕顶端顺时针旋转 +θ 后
-                // 底部摆向左侧（轴方向 = (-sinθ, cosθ)），故 vx 取负与之对齐，
-                // 否则雨丝向左歪却向右运动，看起来像在漂移。
-                val vx = -vy * RainSlantTan
+                // 横向速度与渲染倾斜同方向：渲染时雨丝绕顶端逆时针旋转 -θ 后
+                // 底部摆向右侧（轴方向 = (sinθ, cosθ)），故 vx 取正与之对齐，
+                // 否则雨丝向右歪却向左运动，看起来像在漂移。
+                val vx = vy * RainSlantTan
                 val x = wrap(drop.x + animationTime * vx, size.width + 60f) - 30f
                 val y = wrap(drop.y + animationTime * vy, size.height + drop.length) - drop.length
                 val angle = RainSlantRad
@@ -617,10 +625,10 @@ private fun RainEffect(
             raindropsMidFar.forEach { drop ->
                 val speedFactor = 120f * speedMultiplier
                 val vy = drop.speedY * speedFactor
-                // 横向速度与渲染倾斜同方向：渲染时雨丝绕顶端顺时针旋转 +θ 后
-                // 底部摆向左侧（轴方向 = (-sinθ, cosθ)），故 vx 取负与之对齐，
-                // 否则雨丝向左歪却向右运动，看起来像在漂移。
-                val vx = -vy * RainSlantTan
+                // 横向速度与渲染倾斜同方向：渲染时雨丝绕顶端逆时针旋转 -θ 后
+                // 底部摆向右侧（轴方向 = (sinθ, cosθ)），故 vx 取正与之对齐，
+                // 否则雨丝向右歪却向左运动，看起来像在漂移。
+                val vx = vy * RainSlantTan
                 val x = wrap(drop.x + animationTime * vx, size.width + 80f) - 40f
                 val y = wrap(drop.y + animationTime * vy, size.height + drop.length) - drop.length
                 val angle = RainSlantRad
@@ -650,10 +658,10 @@ private fun RainEffect(
             raindropsMidNear.forEach { drop ->
                 val speedFactor = 170f * speedMultiplier
                 val vy = drop.speedY * speedFactor
-                // 横向速度与渲染倾斜同方向：渲染时雨丝绕顶端顺时针旋转 +θ 后
-                // 底部摆向左侧（轴方向 = (-sinθ, cosθ)），故 vx 取负与之对齐，
-                // 否则雨丝向左歪却向右运动，看起来像在漂移。
-                val vx = -vy * RainSlantTan
+                // 横向速度与渲染倾斜同方向：渲染时雨丝绕顶端逆时针旋转 -θ 后
+                // 底部摆向右侧（轴方向 = (sinθ, cosθ)），故 vx 取正与之对齐，
+                // 否则雨丝向右歪却向左运动，看起来像在漂移。
+                val vx = vy * RainSlantTan
                 val x = wrap(drop.x + animationTime * vx, size.width + 100f) - 50f
                 val y = wrap(drop.y + animationTime * vy, size.height + drop.length) - drop.length
                 val angle = RainSlantRad
@@ -670,10 +678,10 @@ private fun RainEffect(
             raindropsNear.forEach { drop ->
                 val speedFactor = 230f * speedMultiplier
                 val vy = drop.speedY * speedFactor
-                // 横向速度与渲染倾斜同方向：渲染时雨丝绕顶端顺时针旋转 +θ 后
-                // 底部摆向左侧（轴方向 = (-sinθ, cosθ)），故 vx 取负与之对齐，
-                // 否则雨丝向左歪却向右运动，看起来像在漂移。
-                val vx = -vy * RainSlantTan
+                // 横向速度与渲染倾斜同方向：渲染时雨丝绕顶端逆时针旋转 -θ 后
+                // 底部摆向右侧（轴方向 = (sinθ, cosθ)），故 vx 取正与之对齐，
+                // 否则雨丝向右歪却向左运动，看起来像在漂移。
+                val vx = vy * RainSlantTan
                 val x = wrap(drop.x + animationTime * vx, size.width + 120f) - 60f
                 val y = wrap(drop.y + animationTime * vy, size.height + drop.length) - drop.length
                 val angle = RainSlantRad
@@ -1141,10 +1149,10 @@ private fun ThunderShowerEffect(
             raindrops.forEach { drop ->
                 val speedFactor = 180f * speedMultiplier
                 val vy = drop.speedY * speedFactor
-                // 横向速度与渲染倾斜同方向：渲染时雨丝绕顶端顺时针旋转 +θ 后
-                // 底部摆向左侧（轴方向 = (-sinθ, cosθ)），故 vx 取负与之对齐，
-                // 否则雨丝向左歪却向右运动，看起来像在漂移。
-                val vx = -vy * RainSlantTan
+                // 横向速度与渲染倾斜同方向：渲染时雨丝绕顶端逆时针旋转 -θ 后
+                // 底部摆向右侧（轴方向 = (sinθ, cosθ)），故 vx 取正与之对齐，
+                // 否则雨丝向右歪却向左运动，看起来像在漂移。
+                val vx = vy * RainSlantTan
                 val x = wrap(drop.x + animationTime * vx, size.width + 100f) - 50f
                 val y = wrap(drop.y + animationTime * vy, size.height + drop.length) - drop.length
                 val angle = RainSlantRad
@@ -1285,10 +1293,10 @@ private fun SleetEffect(
             raindrops.forEach { drop ->
                 val speedFactor = 160f * speedMultiplier
                 val vy = drop.speedY * speedFactor
-                // 横向速度与渲染倾斜同方向：渲染时雨丝绕顶端顺时针旋转 +θ 后
-                // 底部摆向左侧（轴方向 = (-sinθ, cosθ)），故 vx 取负与之对齐，
-                // 否则雨丝向左歪却向右运动，看起来像在漂移。
-                val vx = -vy * RainSlantTan
+                // 横向速度与渲染倾斜同方向：渲染时雨丝绕顶端逆时针旋转 -θ 后
+                // 底部摆向右侧（轴方向 = (sinθ, cosθ)），故 vx 取正与之对齐，
+                // 否则雨丝向右歪却向左运动，看起来像在漂移。
+                val vx = vy * RainSlantTan
                 val x = wrap(drop.x + animationTime * vx, size.width + 100f) - 50f
                 val y = wrap(drop.y + animationTime * vy, size.height + drop.length) - drop.length
                 val angle = RainSlantRad

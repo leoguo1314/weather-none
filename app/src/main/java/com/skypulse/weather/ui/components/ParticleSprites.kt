@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.IntSize
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.exp
+import kotlin.math.pow
 import kotlin.math.roundToInt
 import kotlin.math.sin
 
@@ -110,17 +111,16 @@ object ParticleSprites {
     /** 高对比雨丝：(0.1, 0.6, 1.0)，用于近景雨层、雷阵雨 */
     val rainStreakHard: ImageBitmap by lazy { bakeStreak(0.1f, 0.6f, 1.0f) }
 
-    // ============ 高级运动模糊雨丝（两端柔化 + 高光内芯） ============
+    // ============ 流星雨滴（头部亮核 + 长拖尾，近似流星但可区分） ============
 
     /**
-     * 电影感雨丝（近景/中景）：高速下落被运动模糊拉长的细长条，
-     * 顶部（尾迹）与底部（落点）皆柔化淡出，中部一条极细的高光内芯模拟「湿亮反光」。
-     * 取代原水滴形 + 白点头部，消除虚线/彗尾的廉价感。
+     * 流星雨滴（近/中景）：底部头部亮核锐利清晰，向上拖尾拉长、随距离渐隐渐淡，
+     * 透明度带轻微波动（清晰度变化），整体呈半透明质感。
      */
-    val rainStreakPro: ImageBitmap by lazy { bakeStreakPro(tail = 0f, body = 0.82f, head = 0.62f, core = 0.55f) }
+    val rainMeteorNear: ImageBitmap by lazy { bakeRainMeteor(head = 1f, trail = 0.85f, coreHalf = 0.20f) }
 
-    /** 电影感雨丝（远景）：更弥散、更暗，配合冷蓝大气透视 */
-    val rainStreakProFar: ImageBitmap by lazy { bakeStreakPro(tail = 0f, body = 0.5f, head = 0.42f, core = 0.28f) }
+    /** 流星雨滴（远景）：更弥散、更暗，配合冷蓝大气透视 */
+    val rainMeteorFar: ImageBitmap by lazy { bakeRainMeteor(head = 0.55f, trail = 0.5f, coreHalf = 0.26f) }
 
     // ============ 冷色电影感配色（大气透视分级） ============
 
@@ -206,36 +206,47 @@ object ParticleSprites {
     }
 
     /**
-     * 烘焙电影感运动模糊雨丝：
-     * - 垂直 alpha 在尾迹(顶)与落点(底)皆柔化淡出，中部恒定，模拟高速运动模糊的长条；
-     * - 横向为纺锤轮廓，叠加一条按固定半宽计算的高斯亮芯（不随轮廓缩放，保持极细反光）。
-     * @param tail  顶部(尾迹)alpha
-     * @param body  中部主体alpha
-     * @param head  底部(落点)alpha
-     * @param core  高光内芯强度
+     * 烘焙流星雨滴精灵：
+     * - 底部头部（约占 20%）：亮核 + 高斯光晕，边缘高次幂衰减（锐利清晰）；
+     * - 向上拖尾：随距离渐隐渐淡、宽度收窄，透明度带轻微波动（清晰度变化），
+     *   边缘低次幂衰减（柔和虚化），形成「近清远虚」的半透明质感；
+     * - 与夜空流星的区别：拖尾更长且透明度有波动，头部不带独立光晕层，整体连续。
+     * @param head    头部峰值 alpha
+     * @param trail   拖尾基础 alpha（尾部端渐隐至接近透明）
+     * @param coreHalf 头部亮芯半宽（相对精灵半宽的比例）
      */
-    private fun bakeStreakPro(tail: Float, body: Float, head: Float, core: Float): ImageBitmap {
+    private fun bakeRainMeteor(head: Float, trail: Float, coreHalf: Float): ImageBitmap {
         val w = StreakWidth
-        val h = StreakHeight
+        val h = StreakHeight * 2 // 拖尾更长
         val bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         val pixels = IntArray(w * h)
         val halfW = w / 2f
-        val coreHalf = halfW * 0.42f // 高光内芯固定半宽，保证缩放后仍是细线
+        val headStart = 0.80f
+        val coreHalfPx = halfW * coreHalf
         for (y in 0 until h) {
-            val t = y.toFloat() / h // 0=尾迹, 1=落点
-            val vertAlpha = when {
-                t < 0.16f -> tail + (body - tail) * (t / 0.16f)
-                t > 0.84f -> body + (head - body) * ((t - 0.84f) / 0.16f)
-                else -> body
+            val t = y.toFloat() / h // 0=拖尾末端, 1=头部
+            val isHead = t >= headStart
+            val vertAlpha = if (isHead) {
+                val hf = (t - headStart) / (1f - headStart)
+                (head * (0.70f + 0.30f * hf)).coerceAtMost(1f)
+            } else {
+                val fade = t / headStart
+                val wave = 0.82f + 0.18f * sin(t * 29f + 1.3f) // 拖尾清晰度波动
+                (trail * (0.10f + 0.90f * fade)) * wave
             }
-            // 纺锤宽度轮廓：两端收窄、中部饱满
-            val radiusAtY = halfW * (0.18f + 0.82f * sin(t * PI.toFloat()))
+            // 头部锐利（高次幂），拖尾柔和（低次幂）
+            val radiusAtY = halfW * (0.16f + 0.84f * t)
+            val edgePow = if (isHead) 4f else 1.7f
             for (x in 0 until w) {
-                val dxEdge = ((x + 0.5f - halfW) / radiusAtY).coerceIn(-1f, 1f)
-                val edge = (1f - dxEdge * dxEdge * dxEdge).coerceIn(0f, 1f) // 柔和纺锤
-                val dxCore = (x + 0.5f - halfW) / coreHalf
-                val coreG = exp(-(dxCore * dxCore) / 0.12f) // 极细高斯亮芯
-                val horiz = (edge * 0.55f + coreG * core).coerceIn(0f, 1.4f)
+                val dxEdge = abs((x + 0.5f - halfW) / radiusAtY).coerceAtMost(1f)
+                val edge = (1f - dxEdge.pow(edgePow)).coerceIn(0f, 1f)
+                val dxCore = (x + 0.5f - halfW) / coreHalfPx
+                val core = exp(-(dxCore * dxCore) / 0.12f)
+                val horiz = if (isHead) {
+                    (edge * 0.40f + core * 0.85f).coerceIn(0f, 1.25f)
+                } else {
+                    (edge * 0.75f + core * coreHalf * 0.20f).coerceIn(0f, 1f)
+                }
                 val a = (vertAlpha * horiz * 255).roundToInt().coerceIn(0, 255)
                 pixels[y * w + x] = (a shl 24) or 0x00FFFFFF
             }

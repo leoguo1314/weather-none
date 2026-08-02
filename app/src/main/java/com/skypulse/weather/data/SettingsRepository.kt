@@ -1,4 +1,4 @@
-﻿package com.skypulse.weather.data
+package com.skypulse.weather.data
 
 import android.content.Context
 import android.content.SharedPreferences
@@ -26,7 +26,9 @@ data class WeatherSettings(
     val showCardSunriseSunset: Boolean = true,
     val showCardMinutely: Boolean = true,
     val showCardTyphoon: Boolean = true,
-    val themeMode: ThemeMode = ThemeMode.SYSTEM
+    val themeMode: ThemeMode = ThemeMode.SYSTEM,
+    val developerModeEnabled: Boolean = false,
+    val debugWeatherPreset: DebugWeatherPreset? = null
 )
 
 @Singleton
@@ -67,6 +69,26 @@ class SettingsRepository @Inject constructor(
         _settings.value = readSettings()
     }
 
+    fun setDeveloperModeEnabled(enabled: Boolean) = updateBoolean(KEY_DEVELOPER_MODE_ENABLED, enabled)
+
+    fun setDebugWeatherPreset(preset: DebugWeatherPreset?) {
+        prefs.edit().putString(KEY_DEBUG_WEATHER_PRESET, preset?.name).apply()
+        _settings.value = readSettings()
+    }
+
+    /**
+     * 开启开发者选项（设置页底部版本号双击触发）。
+     * @return 本次是否恰好从关闭状态变为开启（用于提示 Toast）
+     */
+    fun enableDeveloperMode(): Boolean {
+        val alreadyEnabled = prefs.getBoolean(KEY_DEVELOPER_MODE_ENABLED, false)
+        if (!alreadyEnabled) {
+            prefs.edit().putBoolean(KEY_DEVELOPER_MODE_ENABLED, true).apply()
+            _settings.value = readSettings()
+        }
+        return !alreadyEnabled
+    }
+
     private fun updateBoolean(key: String, enabled: Boolean) {
         prefs.edit().putBoolean(key, enabled).apply()
         _settings.value = readSettings()
@@ -88,7 +110,9 @@ class SettingsRepository @Inject constructor(
         showCardTyphoon = prefs.getBoolean(KEY_SHOW_CARD_TYPHOON, true),
         themeMode = try {
             ThemeMode.valueOf(prefs.getString(KEY_THEME_MODE, ThemeMode.SYSTEM.name) ?: ThemeMode.SYSTEM.name)
-        } catch (_: Exception) { ThemeMode.SYSTEM }
+        } catch (_: Exception) { ThemeMode.SYSTEM },
+        developerModeEnabled = prefs.getBoolean(KEY_DEVELOPER_MODE_ENABLED, false),
+        debugWeatherPreset = DebugWeatherPreset.fromName(prefs.getString(KEY_DEBUG_WEATHER_PRESET, null))
     )
 
     companion object {
@@ -106,5 +130,7 @@ class SettingsRepository @Inject constructor(
         private const val KEY_SHOW_CARD_MINUTELY = "show_card_minutely"
         private const val KEY_SHOW_CARD_TYPHOON = "show_card_typhoon"
         private const val KEY_THEME_MODE = "theme_mode"
+        private const val KEY_DEVELOPER_MODE_ENABLED = "developer_mode_enabled"
+        private const val KEY_DEBUG_WEATHER_PRESET = "debug_weather_preset"
     }
 }

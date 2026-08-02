@@ -52,6 +52,24 @@ val SunnyNightGradient = listOf(
     Color(0xFF234A72)
 )
 
+// Sunny (Morning) — 日出前后的清晨：顶部晨曦蓝 → 地平线朝霞暖橙
+val MorningSunnyGradient = listOf(
+    Color(0xFF3A5A8C),
+    Color(0xFF5C7FAE),
+    Color(0xFF7E9CC4),
+    Color(0xFFC9A98C),
+    Color(0xFFEAB78C)
+)
+
+// Sunny (Evening) — 日落前后的傍晚：顶部暮蓝 → 紫罗兰 → 地平线晚霞暖金
+val EveningSunnyGradient = listOf(
+    Color(0xFF2E3D5C),
+    Color(0xFF4E5A80),
+    Color(0xFF7A6690),
+    Color(0xFFC58A6C),
+    Color(0xFFE8A86C)
+)
+
 // Partly Cloudy (Day) — 明媚通透的多云天蓝，清透感接近晴天
 val PartialCloudGradient = listOf(
     Color(0xFF2870A8),  // 顶部清澈天蓝
@@ -68,6 +86,24 @@ val PartialCloudNightGradient = listOf(
     Color(0xFF253965),
     Color(0xFF2E4778),
     Color(0xFF375590)
+)
+
+// Partly Cloudy (Morning) — 多云清晨：晨曦蓝灰 → 地平线暖橙，云感略闷
+val MorningPartialCloudGradient = listOf(
+    Color(0xFF42587F),
+    Color(0xFF5E769C),
+    Color(0xFF7E93B5),
+    Color(0xFFB89B86),
+    Color(0xFFD8A98F)
+)
+
+// Partly Cloudy (Evening) — 多云傍晚：暮蓝紫灰 → 地平线暖金
+val EveningPartialCloudGradient = listOf(
+    Color(0xFF35405C),
+    Color(0xFF55556F),
+    Color(0xFF7C6C82),
+    Color(0xFFB58770),
+    Color(0xFFD89A72)
 )
 
 // Cloudy (Day) — 明亮清透的阴天天蓝，饱和度提升告别灰蒙蒙

@@ -24,6 +24,14 @@ val SkyGradientStops: List<Float> = listOf(0.0f, 0.40f, 0.65f, 0.85f, 1.0f)
 fun skyGradientColorStops(colors: List<Color>): Array<Pair<Float, Color>> =
     colors.zip(SkyGradientStops) { color, stop -> stop to color }.toTypedArray()
 
+/**
+ * 昼夜相位：用于晴天/多云场景在日出、日落前后约 1 小时切换清晨/傍晚主题。
+ * - MORNING：日出时刻 ± 1 小时
+ * - EVENING：日落时刻 ± 1 小时
+ * - DAY / NIGHT：其余时段（由 [WeatherUtils.isCurrentlyDay] 判定）
+ */
+enum class DayPhase { MORNING, DAY, EVENING, NIGHT }
+
 object WeatherUtils {
 
     private val hourFormat: ThreadLocal<SimpleDateFormat> = ThreadLocal.withInitial {
@@ -39,8 +47,8 @@ object WeatherUtils {
         val isDay: Boolean = true
     )
 
-    fun getWeatherTheme(skycon: String?, isDay: Boolean): WeatherTheme {
-        val background = getWeatherGradient(skycon, isDay)
+    fun getWeatherTheme(skycon: String?, isDay: Boolean, phase: DayPhase? = null): WeatherTheme {
+        val background = getWeatherGradient(skycon, isDay, phase)
         val precipitationIconColor = getPrecipitationIconColor(skycon, isDay)
 
         // --- 玻璃卡片配色：天气色相派生 ---
@@ -107,6 +115,26 @@ object WeatherUtils {
     @Suppress("UNUSED_PARAMETER")
     fun getPrecipitationIconColor(skycon: String?, isDay: Boolean): Color = Color.White
 
+    /**
+     * 计算当前昼夜相位：优先用日出/日落天文时刻 ± 1 小时判定清晨/傍晚，
+     * 无天文数据时回退到固定 06:00 / 18:00 节点。
+     */
+    fun getDayPhase(
+        daily: DailyForecast? = null,
+        now: Calendar = Calendar.getInstance()
+    ): DayPhase {
+        val minuteOfDay = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)
+        val astro = daily?.astro?.firstOrNull { isSameDate(it.date, now) }
+        val sunriseMin = parseTimeMinutes(astro?.sunrise?.time) ?: 6 * 60
+        val sunsetMin = parseTimeMinutes(astro?.sunset?.time) ?: 18 * 60
+        return when {
+            minuteOfDay in (sunriseMin - 60) until (sunriseMin + 60) -> DayPhase.MORNING
+            minuteOfDay in (sunsetMin - 60) until (sunsetMin + 60) -> DayPhase.EVENING
+            isCurrentlyDay(daily, now) -> DayPhase.DAY
+            else -> DayPhase.NIGHT
+        }
+    }
+
     fun getWeatherInfo(skycon: String?, hour: Int = 12): WeatherInfo {
         val isDay = hour in 6..18
         return when (skycon) {
@@ -136,8 +164,17 @@ object WeatherUtils {
         }
     }
 
-    fun getWeatherGradient(skycon: String?, isDay: Boolean = true): List<Color> {
+    /**
+     * 获取天空渐变。晴天/多云场景在 [phase] 为 MORNING/EVENING 时使用清晨/傍晚主题；
+     * [phase] 为 null 时保持原行为（仅按 skycon + isDay 取日夜渐变）。
+     */
+    fun getWeatherGradient(skycon: String?, isDay: Boolean = true, phase: DayPhase? = null): List<Color> {
         return when {
+            // 清晨/傍晚例外主题（仅晴/多云生效）
+            phase == DayPhase.MORNING && skycon != null && (skycon.contains("CLEAR") || skycon.contains("PARTLY_CLOUDY")) ->
+                if (skycon.contains("PARTLY_CLOUDY")) MorningPartialCloudGradient else MorningSunnyGradient
+            phase == DayPhase.EVENING && skycon != null && (skycon.contains("CLEAR") || skycon.contains("PARTLY_CLOUDY")) ->
+                if (skycon.contains("PARTLY_CLOUDY")) EveningPartialCloudGradient else EveningSunnyGradient
             skycon == null -> if (isDay) SunnyGradient else SunnyNightGradient
             skycon.contains("CLEAR") -> if (isDay) SunnyGradient else SunnyNightGradient
             skycon.contains("PARTLY_CLOUDY") -> if (isDay) PartialCloudGradient else PartialCloudNightGradient

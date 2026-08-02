@@ -247,7 +247,8 @@ fun CurrentWeather(
     realtime: RealtimeWeather?,
     todayHigh: Double?,
     todayLow: Double?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    skyconOverride: String? = null
 ) {
     val skipAnimation = LocalSkipCardAnimation.current
     var visible by remember { mutableStateOf(false) }
@@ -297,7 +298,7 @@ fun CurrentWeather(
         Spacer(modifier = Modifier.height(8.dp))
 
         if (todayLow != null || todayHigh != null) {
-            val weatherInfo = WeatherUtils.getWeatherInfo(realtime?.skycon)
+            val weatherInfo = WeatherUtils.getWeatherInfo(skyconOverride ?: realtime?.skycon)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center,
