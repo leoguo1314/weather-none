@@ -73,20 +73,10 @@ android {
         buildConfigField("String", "ALERT_BASE_URL", "\"${alertBaseUrl.replace("\"", "\\\"")}\"")
     }
 
-    signingConfigs {
-        create("release") {
-            storeFile = file("release-keystore.jks")
-            storePassword = "weather123"
-            keyAlias = "weather-app"
-            keyPassword = "weather123"
-        }
-    }
-
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android.txt"),
                 "proguard-rules.pro"

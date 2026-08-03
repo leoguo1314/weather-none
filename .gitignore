@@ -18,3 +18,7 @@ scripts/tools/
 *.apk
 
 scripts/generate_code.py
+
+# Security: signing keystore must never be committed
+*.jks
+*.keystore
