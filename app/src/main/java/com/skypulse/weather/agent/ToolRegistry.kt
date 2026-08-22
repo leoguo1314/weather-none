@@ -10,5 +10,11 @@ class ToolRegistry(
 }
 
 interface AgentTool {
+    val name: String
+        get() = "unknown"
+
+    val description: String
+        get() = ""
+
     suspend fun execute(input: String): String
 }
