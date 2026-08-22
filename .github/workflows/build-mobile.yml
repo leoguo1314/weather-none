@@ -4,6 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
+      - main
       - codex/ai-weather-app
     tags:
       - "v*"
@@ -12,7 +13,11 @@ on:
       - main
 
 permissions:
-  contents: read
+  contents: write
+
+concurrency:
+  group: mobile-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   android:
@@ -110,3 +115,54 @@ jobs:
           path: artifacts/*
           if-no-files-found: error
           retention-days: 30
+
+  release:
+    name: Publish verified mobile packages
+    needs: [android, harmony]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Android package
+        uses: actions/download-artifact@v4
+        with:
+          name: skypulse-android-v4.0.0
+          path: release
+
+      - name: Download HarmonyOS packages
+        uses: actions/download-artifact@v4
+        with:
+          name: skypulse-harmony-v4.0.0
+          path: release
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test -s release/skypulse-v4.0.0.apk
+          test -s release/skypulse-harmony-v4.0.0-unsigned.hap
+          test -s release/skypulse-harmony-v4.0.0-openharmony-signed.hap
+          if gh release view v4.0.0 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release edit v4.0.0 --repo "$GITHUB_REPOSITORY" --title "v4.0.0" --notes "修复已知问题"
+            gh release upload v4.0.0 release/* --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create v4.0.0 release/* \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --title "v4.0.0" \
+              --notes "修复已知问题"
+          fi
+
+      - name: Download and verify release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p verified
+          gh release download v4.0.0 --repo "$GITHUB_REPOSITORY" --dir verified
+          for package in \
+            skypulse-v4.0.0.apk \
+            skypulse-harmony-v4.0.0-unsigned.hap \
+            skypulse-harmony-v4.0.0-openharmony-signed.hap; do
+            test -s "verified/$package"
+            cmp "release/$package" "verified/$package"
+            sha256sum "verified/$package"
+          done
