@@ -344,7 +344,7 @@ struct Index {
               .fontColor('#FFFFFF')
             Text(`${Math.round(this.temperature)}°`)
               .fontSize(82)
-              .fontWeight(FontWeight.Light)
+          .fontWeight(FontWeight.Lighter)
               .fontColor('#FFFFFF')
             Text(`体感 ${Math.round(this.apparentTemperature)}℃`)
               .fontSize(16)
