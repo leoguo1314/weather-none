@@ -113,8 +113,15 @@ object WeatherUtils {
         )
     }
 
-    @Suppress("UNUSED_PARAMETER")
-    fun getPrecipitationIconColor(skycon: String?, isDay: Boolean): Color = Color.White
+    fun getPrecipitationIconColor(skycon: String?, isDay: Boolean): Color {
+        if (!isDay) return Color.White
+        val isPrecipitation = skycon.orEmpty().let { value ->
+            value.contains("RAIN") || value.contains("STORM") ||
+                value.contains("SNOW") || value == "SLEET" ||
+                value == "THUNDER_SHOWER"
+        }
+        return if (isPrecipitation) Color(0xFFEAF7FF) else Color(0xFF0A5AD4)
+    }
 
     /**
      * 计算当前昼夜相位：优先用日出/日落天文时刻 ± 30 分钟判定清晨/傍晚（各 1 小时），

@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
+    <!-- Local OpenAI-compatible gateways (Ollama/OneAPI) may use private HTTP. -->
+    <base-config cleartextTrafficPermitted="true" />
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="true">api.tianditu.gov.cn</domain>
         <domain includeSubdomains="true">weatherapi.market.xiaomi.com</domain>

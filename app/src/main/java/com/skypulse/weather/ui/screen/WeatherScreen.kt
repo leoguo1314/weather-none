@@ -72,7 +72,8 @@ val LocalSkipCardAnimation = compositionLocalOf { false }
 fun WeatherScreen(
     viewModel: WeatherViewModel = hiltViewModel(),
     searchViewModel: CitySearchViewModel = hiltViewModel(),
-    settingsViewModel: SettingsViewModel = hiltViewModel()
+    settingsViewModel: SettingsViewModel = hiltViewModel(),
+    onOpenAiAssistant: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val refreshPhase by viewModel.refreshPhase.collectAsStateWithLifecycle()
@@ -401,6 +402,7 @@ fun WeatherScreen(
                                                     scrollState = pageScrollState,
                                                     settings = settings,
                                                     isPremium = isPremium,
+                                                    onOpenAiAssistant = onOpenAiAssistant,
                                                     debugSkycon = debugPreset?.skycon,
                                                     onRefresh = { viewModel.refresh() },
                                                     onAlertClick = { viewModel.navigateToAlertDetail(0) },
@@ -645,6 +647,7 @@ private fun WeatherContentBody(
     scrollState: ScrollState,
     settings: WeatherSettings,
     isPremium: Boolean = true,
+    onOpenAiAssistant: () -> Unit = {},
     debugSkycon: String? = null,
     onRefresh: () -> Unit = {},
     onAlertClick: (Int) -> Unit = {},
@@ -732,6 +735,14 @@ private fun WeatherContentBody(
                 }
                 Spacer(modifier = Modifier.height(SkyPulseDesignSystem.Spacing.sectionGap))
             }
+
+            AIWeatherAssistantCard(
+                onClick = onOpenAiAssistant,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = SkyPulseDesignSystem.Spacing.screenHorizontal)
+            )
+            Spacer(modifier = Modifier.height(SkyPulseDesignSystem.Spacing.sectionGap))
 
             val minutelyData = result?.minutely?.precipitation_2h
             val showMinutely = !minutelyData.isNullOrEmpty() && minutelyData.any { it != 0.0 }

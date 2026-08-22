@@ -1,0 +1,11 @@
+{
+  "modelVersion": "5.0.0",
+  "name": "skypulse-harmony",
+  "version": "4.0.0",
+  "description": "SkyPulse AI Weather for HarmonyOS",
+  "main": "",
+  "author": "leoguo1314",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {}
+}

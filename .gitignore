@@ -1,4 +1,14 @@
 *.iml
+.idea/
+
+# HarmonyOS / OHPM / Hvigor
+harmony/.hvigor/
+harmony/oh_modules/
+harmony/local.properties
+harmony/entry/build/
+harmony/build/
+harmony/*.hap
+harmony/signing/
 .gradle
 /local.properties
 /.idea

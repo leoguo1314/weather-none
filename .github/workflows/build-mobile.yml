@@ -1,0 +1,168 @@
+name: Build Android and HarmonyOS packages
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - codex/ai-weather-app
+    tags:
+      - "v*"
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+concurrency:
+  group: mobile-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android:
+    name: Android APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Test and build debug APK
+        run: |
+          chmod +x gradlew
+          ./gradlew testDebugUnitTest assembleDebug --stacktrace --no-daemon
+
+      - name: Verify and stage APK
+        run: |
+          mkdir -p artifacts
+          cp app/build/outputs/apk/debug/app-debug.apk artifacts/skypulse-v4.0.0.apk
+          unzip -t artifacts/skypulse-v4.0.0.apk
+          sha256sum artifacts/skypulse-v4.0.0.apk | tee artifacts/skypulse-v4.0.0.apk.sha256
+
+      - name: Upload Android package
+        uses: actions/upload-artifact@v4
+        with:
+          name: skypulse-android-v4.0.0
+          path: artifacts/*
+          if-no-files-found: error
+          retention-days: 30
+
+  harmony:
+    name: HarmonyOS HAP
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgl1-mesa-dev
+
+      - name: Set up HarmonyOS SDK and CLI
+        uses: ErBWs/setup-ohos@v2
+        with:
+          version: 6.1.1.280
+          cache: true
+
+      - name: Install OHPM dependencies
+        working-directory: harmony
+        run: |
+          ohpm config set registry https://ohpm.openharmony.cn/ohpm/
+          ohpm install --all
+
+      - name: Type-check and build HAP
+        working-directory: harmony
+        run: |
+          hvigorw clean --no-daemon
+          hvigorw assembleHap --mode module -p product=default -p module=entry@default -p buildMode=debug --no-daemon
+
+      - name: Stage unsigned and OpenHarmony-signed HAPs
+        run: |
+          unsigned_hap="$(find harmony/entry/build -type f -name '*-unsigned.hap' -print -quit)"
+          test -n "$unsigned_hap"
+          mkdir -p artifacts
+          cp "$unsigned_hap" artifacts/skypulse-harmony-v4.0.0-unsigned.hap
+          chmod +x harmony/scripts/sign_openharmony_hap.sh
+          harmony/scripts/sign_openharmony_hap.sh \
+            artifacts/skypulse-harmony-v4.0.0-unsigned.hap \
+            artifacts/skypulse-harmony-v4.0.0-openharmony-signed.hap
+          unzip -t artifacts/skypulse-harmony-v4.0.0-unsigned.hap
+          unzip -t artifacts/skypulse-harmony-v4.0.0-openharmony-signed.hap
+          sha256sum artifacts/*.hap | tee artifacts/skypulse-harmony-v4.0.0.sha256
+
+      - name: Upload HarmonyOS packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: skypulse-harmony-v4.0.0
+          path: artifacts/*
+          if-no-files-found: error
+          retention-days: 30
+
+  release:
+    name: Publish verified mobile packages
+    needs: [android, harmony]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Android package
+        uses: actions/download-artifact@v4
+        with:
+          name: skypulse-android-v4.0.0
+          path: release
+
+      - name: Download HarmonyOS packages
+        uses: actions/download-artifact@v4
+        with:
+          name: skypulse-harmony-v4.0.0
+          path: release
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test -s release/skypulse-v4.0.0.apk
+          test -s release/skypulse-harmony-v4.0.0-unsigned.hap
+          test -s release/skypulse-harmony-v4.0.0-openharmony-signed.hap
+          if gh release view v4.0.0 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release edit v4.0.0 --repo "$GITHUB_REPOSITORY" --title "v4.0.0" --notes "修复已知问题"
+            gh release upload v4.0.0 release/* --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create v4.0.0 release/* \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --title "v4.0.0" \
+              --notes "修复已知问题"
+          fi
+
+      - name: Download and verify release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p verified
+          gh release download v4.0.0 --repo "$GITHUB_REPOSITORY" --dir verified
+          for package in \
+            skypulse-v4.0.0.apk \
+            skypulse-harmony-v4.0.0-unsigned.hap \
+            skypulse-harmony-v4.0.0-openharmony-signed.hap; do
+            test -s "verified/$package"
+            cmp "release/$package" "verified/$package"
+            sha256sum "verified/$package"
+          done

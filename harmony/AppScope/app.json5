@@ -1,0 +1,10 @@
+{
+  "app": {
+    "bundleName": "com.skypulse.weather.harmony",
+    "vendor": "leoguo1314",
+    "versionCode": 4000000,
+    "versionName": "4.0.0",
+    "icon": "$media:app_icon",
+    "label": "$string:app_name"
+  }
+}
