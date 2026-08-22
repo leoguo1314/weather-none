@@ -29,7 +29,11 @@ class DefaultAgentRuntime(
             )
         }
 
-        val answer = traces.joinToString("\n") { it.result }
+        val answer = if (traces.isEmpty()) {
+            "未找到可执行天气工具。"
+        } else {
+            traces.joinToString("\n") { it.result }
+        }
 
         return AgentResponse(
             answer = answer,
