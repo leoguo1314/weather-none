@@ -54,7 +54,10 @@ mv "$profile.tmp" "$profile"
 pushd "$autosign_dir" >/dev/null
 python3 autosign.py createAppCertAndProfile
 python3 autosign.py signHap
-java -jar "$signer_jar" verify-app -inFile result/app1-signed.hap
+java -jar "$signer_jar" verify-app \
+  -inFile result/app1-signed.hap \
+  -outCertChain "$work_dir/cert-chain.pem" \
+  -outProfile "$work_dir/profile.json"
 popd >/dev/null
 
 mkdir -p "$(dirname "$signed_hap")"
