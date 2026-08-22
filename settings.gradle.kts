@@ -1,4 +1,11 @@
 pluginManagement {
+    resolutionStrategy {
+        eachPlugin {
+            if (requested.id.id == "com.google.devtools.ksp") {
+                useModule("com.google.devtools.ksp:symbol-processing-gradle-plugin:${requested.version}")
+            }
+        }
+    }
     repositories {
         maven { url = uri("https://maven.aliyun.com/repository/gradle-plugin") }
         maven { url = uri("https://maven.aliyun.com/repository/public") }
