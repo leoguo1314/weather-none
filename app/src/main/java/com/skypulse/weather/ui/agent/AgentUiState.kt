@@ -1,15 +1,10 @@
 package com.skypulse.weather.ui.agent
 
-sealed interface AgentUiState {
-    data object Idle : AgentUiState
+import com.skypulse.weather.agent.AgentModelConfig
 
-    data object Thinking : AgentUiState
-
-    data class Success(
-        val messages: List<AgentMessage>
-    ) : AgentUiState
-
-    data class Error(
-        val message: String
-    ) : AgentUiState
-}
+data class AgentUiState(
+    val messages: List<AgentMessage> = emptyList(),
+    val isThinking: Boolean = false,
+    val errorMessage: String? = null,
+    val config: AgentModelConfig = AgentModelConfig()
+)

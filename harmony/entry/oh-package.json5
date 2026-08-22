@@ -1,0 +1,9 @@
+{
+  "name": "entry",
+  "version": "4.0.0",
+  "description": "SkyPulse HarmonyOS entry module",
+  "main": "",
+  "author": "leoguo1314",
+  "license": "MIT",
+  "dependencies": {}
+}

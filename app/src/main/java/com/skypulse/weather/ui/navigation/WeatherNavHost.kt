@@ -1,30 +1,34 @@
 package com.skypulse.weather.ui.navigation
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.Crossfade
 import androidx.compose.runtime.Composable
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import com.skypulse.weather.ui.agent.AgentChatScreen
 import com.skypulse.weather.ui.screen.WeatherScreen
 
 @Composable
 fun WeatherNavHost() {
-    val navController = rememberNavController()
+    var route by rememberSaveable { mutableStateOf(AppRoute.WEATHER) }
 
-    NavHost(
-        navController = navController,
-        startDestination = AppRoute.Weather.route
-    ) {
-        composable(AppRoute.Weather.route) {
+    BackHandler(enabled = route == AppRoute.AGENT_CHAT) {
+        route = AppRoute.WEATHER
+    }
+
+    Crossfade(targetState = route, label = "top_level_route") { target ->
+        when (target) {
+            AppRoute.WEATHER -> {
             WeatherScreen(
-                onOpenAiAssistant = {
-                    navController.navigate(AppRoute.AgentChat.route)
-                }
+                    onOpenAiAssistant = { route = AppRoute.AGENT_CHAT }
             )
         }
 
-        composable(AppRoute.AgentChat.route) {
-            AgentChatScreen()
+            AppRoute.AGENT_CHAT -> {
+                AgentChatScreen(onBack = { route = AppRoute.WEATHER })
+            }
         }
     }
 }

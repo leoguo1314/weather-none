@@ -7,21 +7,16 @@ import androidx.compose.runtime.Composable
 
 @Composable
 fun ToolTraceCard(
-    traces: List<ToolTraceUi>
+    traces: List<ToolTrace>
 ) {
     Card {
         Column {
             Text(text = "分析过程")
             traces.forEach { trace ->
                 Text(
-                    text = "✓ ${trace.toolName}: ${trace.status}"
+                    text = "✓ ${trace.toolName}: ${trace.status}\n${trace.result}"
                 )
             }
         }
     }
 }
-
-data class ToolTraceUi(
-    val toolName: String,
-    val status: String
-)

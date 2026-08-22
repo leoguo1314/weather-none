@@ -1,0 +1,7 @@
+{
+  "string": [
+    { "name": "module_desc", "value": "SkyPulse AI天气鸿蒙原生应用" },
+    { "name": "ability_desc", "value": "实时天气与AI出行助手" },
+    { "name": "ability_label", "value": "SkyPulse AI天气" }
+  ]
+}
