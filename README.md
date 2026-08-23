@@ -200,7 +200,7 @@ Android Agent 会根据用户问题选择并组合天气工具：
 - 穿衣建议
 - 出行风险
 
-Android 端支持配置 OpenAI API 兼容服务，包括常见的 OneAPI 或本地 Ollama 网关。API Key 在设备端加密保存；未配置或调用失败时使用本地规则推理。
+Android 端支持配置 OpenAI API 兼容服务，包括常见的 OneAPI 或本地 Ollama 网关。配置优先使用系统加密存储；少数不支持加密组件的设备会回退到应用私有本地存储。未配置或调用失败时使用本地规则推理。
 
 HarmonyOS 端提供无需模型 Key 的本地 Weather Agent，结合 Open-Meteo 实时天气和 7 日预报生成趋势、穿衣与出行建议。
 
