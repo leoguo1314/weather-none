@@ -22,35 +22,60 @@ data class AgentModelConfig(
 class AgentConfigStore @Inject constructor(
     @ApplicationContext context: Context
 ) {
-    private val preferences: SharedPreferences = runCatching {
+    private data class PreferencesHolder(
+        val preferences: SharedPreferences,
+        val encrypted: Boolean
+    )
+
+    private val holder: PreferencesHolder = runCatching {
         val masterKey = MasterKey.Builder(context)
             .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
             .build()
-        EncryptedSharedPreferences.create(
-            context,
-            "ai_agent_config",
-            masterKey,
-            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        PreferencesHolder(
+            preferences = EncryptedSharedPreferences.create(
+                context,
+                "ai_agent_config",
+                masterKey,
+                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+            ),
+            encrypted = true
         )
     }.getOrElse {
-        context.getSharedPreferences("ai_agent_config_fallback", Context.MODE_PRIVATE)
+        PreferencesHolder(
+            preferences = context.getSharedPreferences("ai_agent_config_fallback", Context.MODE_PRIVATE),
+            encrypted = false
+        )
+    }
+    private val preferences: SharedPreferences = holder.preferences
+
+    val storesApiKeySecurely: Boolean
+        get() = holder.encrypted
+
+    init {
+        if (!holder.encrypted) {
+            preferences.edit().remove(KEY_API_KEY).apply()
+        }
     }
 
     fun load(): AgentModelConfig = AgentModelConfig(
         baseUrl = preferences.getString(KEY_BASE_URL, "").orEmpty(),
-        apiKey = preferences.getString(KEY_API_KEY, "").orEmpty(),
+        apiKey = if (holder.encrypted) preferences.getString(KEY_API_KEY, "").orEmpty() else "",
         model = preferences.getString(KEY_MODEL, "").orEmpty(),
         enabled = preferences.getBoolean(KEY_ENABLED, false)
     )
 
     fun save(config: AgentModelConfig) {
-        preferences.edit()
+        val editor = preferences.edit()
             .putString(KEY_BASE_URL, config.baseUrl.trim())
-            .putString(KEY_API_KEY, config.apiKey.trim())
             .putString(KEY_MODEL, config.model.trim())
             .putBoolean(KEY_ENABLED, config.enabled)
-            .apply()
+        if (holder.encrypted) {
+            editor.putString(KEY_API_KEY, config.apiKey.trim())
+        } else {
+            editor.remove(KEY_API_KEY)
+        }
+        editor.apply()
     }
 
     private companion object {

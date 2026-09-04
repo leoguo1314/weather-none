@@ -48,6 +48,17 @@ val alertBaseUrl = providers.gradleProperty("ALERT_BASE_URL")
     .orElse(localProperties.getProperty("ALERT_BASE_URL", "https://starplucker.cyapi.cn/"))
     .get()
 
+val releaseSigningStoreFile = providers.environmentVariable("SKYPULSE_SIGNING_STORE_FILE").orNull
+val releaseSigningStorePassword = providers.environmentVariable("SKYPULSE_SIGNING_STORE_PASSWORD").orNull
+val releaseSigningKeyAlias = providers.environmentVariable("SKYPULSE_SIGNING_KEY_ALIAS").orNull
+val releaseSigningKeyPassword = providers.environmentVariable("SKYPULSE_SIGNING_KEY_PASSWORD").orNull
+val hasReleaseSigning = listOf(
+    releaseSigningStoreFile,
+    releaseSigningStorePassword,
+    releaseSigningKeyAlias,
+    releaseSigningKeyPassword
+).all { !it.isNullOrBlank() }
+
 android {
     namespace = "com.skypulse.weather"
     compileSdk = 35
@@ -56,8 +67,8 @@ android {
         applicationId = "com.skypulse.weather"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1055
-        versionName = "4.0.0"
+        versionCode = 1056
+        versionName = "4.0.1"
 
         vectorDrawables {
             useSupportLibrary = true
@@ -73,8 +84,22 @@ android {
         buildConfigField("String", "ALERT_BASE_URL", "\"${alertBaseUrl.replace("\"", "\\\"")}\"")
     }
 
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = file(requireNotNull(releaseSigningStoreFile))
+                storePassword = releaseSigningStorePassword
+                keyAlias = releaseSigningKeyAlias
+                keyPassword = releaseSigningKeyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(

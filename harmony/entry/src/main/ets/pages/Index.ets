@@ -142,6 +142,7 @@ struct Index {
   @State question: string = '';
   @State agentAnswer: string = '我会根据当前实时天气，给出穿衣、带伞和出行建议。';
   @State toolTrace: string[] = [];
+  private requestSerial: number = 0;
 
   aboutToAppear(): void {
     this.loadWeather();
@@ -152,6 +153,7 @@ struct Index {
   }
 
   private async loadWeather(): Promise<void> {
+    const requestSerial: number = ++this.requestSerial;
     this.loading = true;
     this.loadError = '';
     const city: CityOption = this.currentCity();
@@ -174,6 +176,9 @@ struct Index {
       }
       const raw: string = response.result as string;
       const data: OpenMeteoResponse = JSON.parse(raw) as OpenMeteoResponse;
+      if (requestSerial !== this.requestSerial) {
+        return;
+      }
       this.temperature = data.current.temperature_2m;
       this.apparentTemperature = data.current.apparent_temperature;
       this.humidity = data.current.relative_humidity_2m;
@@ -197,10 +202,14 @@ struct Index {
       this.forecast = days;
       this.agentAnswer = `${city.name}天气已更新。你可以问我未来趋势、穿衣、带伞或户外活动风险。`;
     } catch (error) {
-      this.loadError = `加载失败：${error instanceof Error ? error.message : '网络异常'}`;
+      if (requestSerial === this.requestSerial) {
+        this.loadError = `加载失败：${error instanceof Error ? error.message : '网络异常'}`;
+      }
     } finally {
       request.destroy();
-      this.loading = false;
+      if (requestSerial === this.requestSerial) {
+        this.loading = false;
+      }
     }
   }
 
@@ -211,10 +220,17 @@ struct Index {
     this.cityIndex = index;
     this.forecast = [];
     this.toolTrace = [];
+    this.question = '';
+    this.agentAnswer = `正在加载 ${this.currentCity().name} 的实时天气…`;
     this.loadWeather();
   }
 
   private askAgent(preset?: string): void {
+    if (this.loading || this.loadError.length > 0) {
+      this.toolTrace = [];
+      this.agentAnswer = '天气数据尚未就绪，请先完成刷新后再提问。';
+      return;
+    }
     const input: string = (preset ?? this.question).trim();
     if (input.length === 0) {
       return;
@@ -504,7 +520,13 @@ struct Index {
             .fontColor('#DDEEFF')
         }
         .layoutWeight(1)
-        Text('4.0.0').fontSize(12).fontColor('#DDEEFF')
+          Button('刷新')
+            .height(34)
+            .fontSize(12)
+            .fontColor('#FFFFFF')
+            .backgroundColor('#26FFFFFF')
+            .enabled(!this.loading)
+            .onClick(() => this.loadWeather())
       }
       .width('100%')
       .alignItems(VerticalAlign.Center)

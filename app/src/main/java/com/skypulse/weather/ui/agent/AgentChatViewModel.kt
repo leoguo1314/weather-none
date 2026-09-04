@@ -27,16 +27,19 @@ class AgentChatViewModel @Inject constructor(
     private val modelClient: OpenAiCompatibleClient
 ) : ViewModel() {
     private val engine = WeatherAgentEngine()
+    private var targetCityId: String? = null
 
-    private val welcome = AgentMessage(
+    private fun welcomeMessage(cityName: String? = null) = AgentMessage(
         id = "welcome",
         role = MessageRole.ASSISTANT,
-        content = "你好，我是 SkyPulse AI 天气助手。我会读取当前城市的实时天气，分析趋势、空气质量、穿衣和出行风险。即使没有配置大模型，也可以离线完成天气推理。"
+        content = "你好，我是 SkyPulse AI 天气助手。我会读取${cityName?.let { " $it" } ?: "当前城市"}的实时天气，" +
+            "分析趋势、空气质量、穿衣和出行风险。即使没有配置大模型，也可以在本地完成天气推理。"
     )
     private val _state = MutableStateFlow(
         AgentUiState(
-            messages = listOf(welcome),
-            config = configStore.load()
+            messages = listOf(welcomeMessage()),
+            config = configStore.load(),
+            secureStorageAvailable = configStore.storesApiKeySecurely
         )
     )
     val state: StateFlow<AgentUiState> = _state.asStateFlow()
@@ -44,6 +47,22 @@ class AgentChatViewModel @Inject constructor(
     fun saveConfig(config: AgentModelConfig) {
         configStore.save(config)
         _state.value = _state.value.copy(config = config, errorMessage = null)
+    }
+
+    fun selectCity(cityId: String?) {
+        if (targetCityId == cityId && _state.value.activeCityName != null) return
+        targetCityId = cityId
+        viewModelScope.launch {
+            val requestedCityId = cityId
+            val city = selectAgentCity(cityRepository.getCities(), requestedCityId)
+            if (targetCityId != requestedCityId) return@launch
+            _state.value = _state.value.copy(
+                messages = listOf(welcomeMessage(city?.name)),
+                isThinking = false,
+                errorMessage = null,
+                activeCityName = city?.name
+            )
+        }
     }
 
     fun sendMessage(input: String) {
@@ -110,12 +129,15 @@ class AgentChatViewModel @Inject constructor(
     }
 
     fun clearConversation() {
-        _state.value = _state.value.copy(messages = listOf(welcome), errorMessage = null)
+        _state.value = _state.value.copy(
+            messages = listOf(welcomeMessage(_state.value.activeCityName)),
+            errorMessage = null
+        )
     }
 
     private suspend fun loadSnapshot() = cityRepository.getCities()
         .let { cities ->
-            val city = cities.firstOrNull { it.isCurrentLocation } ?: cities.firstOrNull()
+            val city = selectAgentCity(cities, targetCityId)
                 ?: error("还没有可用城市，请先返回主页完成定位。")
             var weather = weatherRepository.getWeatherFromCache(city.id)
             if (weather == null || weatherRepository.isCacheStale(city.id, 15 * 60 * 1000L)) {

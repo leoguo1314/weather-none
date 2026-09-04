@@ -1,4 +1,4 @@
-﻿package com.skypulse.weather.data.remote
+package com.skypulse.weather.data.remote
 
 import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
@@ -98,4 +98,3 @@ data class XiaomiWeatherResponse(
 data class XiaomiCurrentWeather(
     @Json(name = "weather") val weatherCode: String? = null
 )
-

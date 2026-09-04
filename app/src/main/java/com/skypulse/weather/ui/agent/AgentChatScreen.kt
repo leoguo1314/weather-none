@@ -53,12 +53,17 @@ private val suggestions = listOf(
 
 @Composable
 fun AgentChatScreen(
+    cityId: String?,
     onBack: () -> Unit,
     viewModel: AgentChatViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
     var showSettings by remember { mutableStateOf(false) }
+
+    LaunchedEffect(cityId) {
+        viewModel.selectCity(cityId)
+    }
 
     LaunchedEffect(state.messages.size, state.isThinking) {
         if (state.messages.isNotEmpty()) {
@@ -88,7 +93,19 @@ fun AgentChatScreen(
                 Column(modifier = Modifier.weight(1f)) {
                     Text("AI 天气助手", color = Color.White, style = MaterialTheme.typography.titleLarge)
                     Text(
-                        if (state.config.isUsable) "实时天气工具 + ${state.config.model}" else "实时天气工具 + 本地 Agent",
+                        buildString {
+                            state.activeCityName?.let {
+                                append(it)
+                                append(" · ")
+                            }
+                            append(
+                                if (state.config.isUsable) {
+                                    "实时天气工具 + ${state.config.model}"
+                                } else {
+                                    "实时天气工具 + 本地 Agent"
+                                }
+                            )
+                        },
                         color = Color.White.copy(alpha = 0.75f),
                         style = MaterialTheme.typography.bodySmall
                     )
@@ -148,6 +165,7 @@ fun AgentChatScreen(
     if (showSettings) {
         ModelSettingsDialog(
             config = state.config,
+            secureStorageAvailable = state.secureStorageAvailable,
             onDismiss = { showSettings = false },
             onSave = {
                 viewModel.saveConfig(it)
@@ -198,6 +216,7 @@ private fun MessageBubble(message: AgentMessage) {
 @Composable
 private fun ModelSettingsDialog(
     config: AgentModelConfig,
+    secureStorageAvailable: Boolean,
     onDismiss: () -> Unit,
     onSave: (AgentModelConfig) -> Unit
 ) {
@@ -238,7 +257,13 @@ private fun ModelSettingsDialog(
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
                 )
-                Text("配置在设备端加密保存；局域网 HTTP 仅用于本地模型。")
+                Text(
+                    if (secureStorageAvailable) {
+                        "配置在设备端加密保存；局域网 HTTP 仅用于本地模型。"
+                    } else {
+                        "当前设备无法使用加密存储；API Key 仅在本次运行中保留，重启后需重新输入。"
+                    }
+                )
             }
         },
         confirmButton = {

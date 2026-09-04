@@ -2,16 +2,15 @@
 
 ## 构建环境
 - **JAVA_HOME**: `C:\Program Files\Android\Android Studio\jbr`
-- **Gradle Wrapper**: `gradlew.bat` (Gradle 8.5)
-- **compileSdk / targetSdk**: 34
+- **Gradle Wrapper**: `gradlew.bat` (Gradle 8.11.1)
+- **compileSdk / targetSdk**: 35
 - **minSdk**: 26
-- **Java Version**: 21
+- **Java Version**: 17
 
 ## 签名信息 (Release)
-- **Keystore 文件**: `app/release-keystore.jks`
-- **Store Password**: `weather123`
-- **Key Alias**: `weather-app`
-- **Key Password**: `weather123`
+- Release keystore 与口令不得写入仓库、说明文件或日志。
+- 本地/CI 通过 `SKYPULSE_SIGNING_STORE_FILE`、`SKYPULSE_SIGNING_STORE_PASSWORD`、`SKYPULSE_SIGNING_KEY_ALIAS`、`SKYPULSE_SIGNING_KEY_PASSWORD` 注入。
+- GitHub Actions 使用 `ANDROID_KEYSTORE_BASE64`、`ANDROID_KEYSTORE_PASSWORD`、`ANDROID_KEY_ALIAS`、`ANDROID_KEY_PASSWORD` 四个 Repository Secrets。
 
 ## AMAP (高德地图)
 - **定位服务**: 使用 AMAP Location SDK 进行 GPS 定位
@@ -23,7 +22,7 @@
 
 ## 发版规则
 - **默认发版**: 每次代码改动完成并验证后，执行 `scripts\release.ps1` 发布到云剪贴板（内含 bump 版本 → 构建 → 上传）；除非用户明确要求暂不发版
-- **云剪贴板密码**: `888`
+- **云剪贴板凭据**: 仅从本机安全配置读取，不得写入仓库或命令输出
 - **GitHub 发版**: 仅在用户主动要求时才推送到 GitHub 并创建 Release（直接发布，非 draft）
 - **GitHub Token**: GitHub 发版必须从 `local.properties` 读取 GitHub token，不得硬编码到源码、脚本输出或 Release 描述中
 - **GitHub 包体完整性**: GitHub 发版上传 APK 前必须记录本地 APK 文件大小和 SHA-256；上传后必须从 GitHub Release 下载该 APK 资产并重新计算文件大小和 SHA-256，二者完全一致才算发版成功；如不一致，删除损坏资产后重新上传并再次校验

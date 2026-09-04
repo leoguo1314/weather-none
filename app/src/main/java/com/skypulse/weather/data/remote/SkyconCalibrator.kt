@@ -1,4 +1,4 @@
-﻿package com.skypulse.weather.data.remote
+package com.skypulse.weather.data.remote
 
 import com.skypulse.weather.BuildConfig
 import com.skypulse.weather.util.FileLogger

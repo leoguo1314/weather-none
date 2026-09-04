@@ -73,7 +73,7 @@ fun WeatherScreen(
     viewModel: WeatherViewModel = hiltViewModel(),
     searchViewModel: CitySearchViewModel = hiltViewModel(),
     settingsViewModel: SettingsViewModel = hiltViewModel(),
-    onOpenAiAssistant: () -> Unit = {}
+    onOpenAiAssistant: (String?) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val refreshPhase by viewModel.refreshPhase.collectAsStateWithLifecycle()
@@ -402,7 +402,7 @@ fun WeatherScreen(
                                                     scrollState = pageScrollState,
                                                     settings = settings,
                                                     isPremium = isPremium,
-                                                    onOpenAiAssistant = onOpenAiAssistant,
+                                                    onOpenAiAssistant = { onOpenAiAssistant(city?.id) },
                                                     debugSkycon = debugPreset?.skycon,
                                                     onRefresh = { viewModel.refresh() },
                                                     onAlertClick = { viewModel.navigateToAlertDetail(0) },

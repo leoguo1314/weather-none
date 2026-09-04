@@ -13,6 +13,7 @@ import com.skypulse.weather.ui.screen.WeatherScreen
 @Composable
 fun WeatherNavHost() {
     var route by rememberSaveable { mutableStateOf(AppRoute.WEATHER) }
+    var agentCityId by rememberSaveable { mutableStateOf<String?>(null) }
 
     BackHandler(enabled = route == AppRoute.AGENT_CHAT) {
         route = AppRoute.WEATHER
@@ -21,13 +22,19 @@ fun WeatherNavHost() {
     Crossfade(targetState = route, label = "top_level_route") { target ->
         when (target) {
             AppRoute.WEATHER -> {
-            WeatherScreen(
-                    onOpenAiAssistant = { route = AppRoute.AGENT_CHAT }
-            )
-        }
+                WeatherScreen(
+                    onOpenAiAssistant = { cityId ->
+                        agentCityId = cityId
+                        route = AppRoute.AGENT_CHAT
+                    }
+                )
+            }
 
             AppRoute.AGENT_CHAT -> {
-                AgentChatScreen(onBack = { route = AppRoute.WEATHER })
+                AgentChatScreen(
+                    cityId = agentCityId,
+                    onBack = { route = AppRoute.WEATHER }
+                )
             }
         }
     }

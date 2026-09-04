@@ -1,4 +1,4 @@
-﻿package com.skypulse.weather.sync
+package com.skypulse.weather.sync
 
 import android.util.Log
 import com.skypulse.weather.data.LocationManager
@@ -709,4 +709,3 @@ sealed class SyncResult {
 
     fun getOrNull(): WeatherResponse? = (this as? Success)?.weather
 }
-

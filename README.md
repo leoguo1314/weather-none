@@ -30,7 +30,7 @@ v4.0.0 新增 AI Weather Agent，可结合实时天气、逐时/逐日趋势、�
 |---|---|---|
 | 实时天气 | 温度、湿度、风、气压、能见度、AQI | 温度、体感、湿度、风速 |
 | 天气预报 | 48 小时、15 天 | 7 天 |
-| 城市能力 | GPS 定位、多城市管理 | 城市搜索与切换 |
+| 城市能力 | GPS 定位、多城市管理 | 预置城市切换 |
 | AI 天气助手 | 本地 Agent；可选 OpenAI/OneAPI/Ollama 兼容模型 | 免 Key 本地 Weather Agent |
 | 数据源 | 彩云天气及项目配置的天气服务 | Open-Meteo 免 Key 接口 |
 | 原生 UI | Jetpack Compose + Material 3 | ArkUI |
@@ -48,7 +48,7 @@ v4.0.0 新增 AI Weather Agent，可结合实时天气、逐时/逐日趋势、�
 | [skypulse-harmony-v4.0.0-openharmony-signed.hap](https://github.com/leoguo1314/weather-none/releases/download/v4.0.0/skypulse-harmony-v4.0.0-openharmony-signed.hap) | OpenHarmony 开发设备或兼容模拟器 | 仅适用于接受该自签证书的设备 |
 | [skypulse-harmony-v4.0.0-unsigned.hap](https://github.com/leoguo1314/weather-none/releases/download/v4.0.0/skypulse-harmony-v4.0.0-unsigned.hap) | 华为开发者重新签名的输入包 | 不可以，必须先签名 |
 
-Release 同时提供 SHA-256 文件，可在安装前核对包体完整性。
+Release 同时提供 SHA-256 文件，可在安装前核对包体完整性。v4.0.0 校验文件中的哈希值有效，但文件名带有旧 CI 的 `artifacts/` 前缀；可手工比对哈希，或在 Linux/macOS 上执行 `sed 's#artifacts/##' <校验文件> | sha256sum -c -`。v4.0.1 起校验文件将直接使用可下载文件名。
 
 ## Android 手机安装
 
@@ -200,7 +200,7 @@ Android Agent 会根据用户问题选择并组合天气工具：
 - 穿衣建议
 - 出行风险
 
-Android 端支持配置 OpenAI API 兼容服务，包括常见的 OneAPI 或本地 Ollama 网关。配置优先使用系统加密存储；少数不支持加密组件的设备会回退到应用私有本地存储。未配置或调用失败时使用本地规则推理。
+Android 端支持配置 OpenAI API 兼容服务，包括常见的 OneAPI 或本地 Ollama 网关。模型 API Key 只在系统加密存储可用时持久化；如果设备无法启用加密组件，Key 仅在当前运行期间保留，重启后需要重新输入。未配置或调用失败时使用本地规则推理。
 
 HarmonyOS 端提供无需模型 Key 的本地 Weather Agent，结合 Open-Meteo 实时天气和 7 日预报生成趋势、穿衣与出行建议。
 
@@ -221,10 +221,22 @@ weather-none/
 
 GitHub Actions 会执行：
 
-- Android 单元测试与 Debug APK 构建
+- Android 单元测试、Lint 与 APK 构建
 - HarmonyOS ArkTS 类型检查与 HAP 构建
-- HAP 自签名、ZIP 完整性和 SHA-256 校验
-- Release 上传后重新下载并逐字节比对
+- APK 签名验证，以及 APK/HAP 的 ZIP 完整性和 SHA-256 校验
+- HAP OpenHarmony 自签名验证，并保留华为开发者重新签名所需的未签名包
+- Android 与 HarmonyOS 版本号一致性检查
+- 仅版本标签触发 Release；普通分支和 `main` 提交只生成 Debug 构建产物，不覆盖既有版本
+- Release 上传后重新下载并逐字节比对；同一标签的不同资产会被拒绝覆盖
+
+正式 Android Release 必须在仓库中配置以下 GitHub Actions Secrets，以保证每次更新使用同一签名并支持覆盖安装：
+
+- `ANDROID_KEYSTORE_BASE64`
+- `ANDROID_KEYSTORE_PASSWORD`
+- `ANDROID_KEY_ALIAS`
+- `ANDROID_KEY_PASSWORD`
+
+创建 `v<versionName>` 标签前，必须确保 Android `versionName` 与 HarmonyOS `versionName` 一致，且标签名与二者完全匹配。Release 构建缺少稳定签名凭据时会直接失败，不会退化为临时 Debug 签名包。
 
 查看：[Build Android and HarmonyOS packages](https://github.com/leoguo1314/weather-none/actions/workflows/build-mobile.yml)
 

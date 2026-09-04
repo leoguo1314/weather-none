@@ -13,6 +13,15 @@ if [[ ! -f "$unsigned_hap" ]]; then
   exit 3
 fi
 
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+app_config="$script_dir/../AppScope/app.json5"
+bundle_name="$(jq -r '.app.bundleName' "$app_config")"
+version_name="$(jq -r '.app.versionName' "$app_config")"
+version_code="$(jq -r '.app.versionCode' "$app_config")"
+test -n "$bundle_name"
+test -n "$version_name"
+test "$version_code" -gt 0
+
 signer_jar="${HAP_SIGN_TOOL_JAR:-}"
 if [[ -z "$signer_jar" && -n "${HOS_SDK_HOME:-}" ]]; then
   signer_jar="$(find "$HOS_SDK_HOME" -type f -name 'hap-sign-tool.jar' -print -quit)"
@@ -36,11 +45,13 @@ not_before="$((now_epoch - 3600))"
 not_after="$((now_epoch + 31536000))"
 profile="$autosign_dir/UnsgnedReleasedProfileTemplate.json"
 jq \
-  --arg bundle "com.skypulse.weather.harmony" \
+  --arg bundle "$bundle_name" \
+  --arg versionName "$version_name" \
+  --argjson versionCode "$version_code" \
   --argjson before "$not_before" \
   --argjson after "$not_after" \
-  '."version-name" = "4.0.0" |
-   ."version-code" = 4000000 |
+  '."version-name" = $versionName |
+   ."version-code" = $versionCode |
    ."app-distribution-type" = "none" |
    .validity."not-before" = $before |
    .validity."not-after" = $after |

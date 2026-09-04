@@ -13,7 +13,7 @@ on:
       - main
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: mobile-${{ github.ref }}
@@ -23,7 +23,10 @@ jobs:
   android:
     name: Android APK
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      package_name: ${{ steps.stage.outputs.package_name }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -37,22 +40,75 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Test and build debug APK
+      - name: Resolve and verify mobile version
+        id: version
+        shell: bash
+        run: |
+          expected_tag=""
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            expected_tag="$GITHUB_REF_NAME"
+          fi
+          version="$(EXPECTED_RELEASE_TAG="$expected_tag" bash scripts/verify_mobile_versions.sh)"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Configure stable Android release signing
+        if: github.ref_type == 'tag'
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        shell: bash
+        run: |
+          test -n "$ANDROID_KEYSTORE_BASE64"
+          test -n "$ANDROID_KEYSTORE_PASSWORD"
+          test -n "$ANDROID_KEY_ALIAS"
+          test -n "$ANDROID_KEY_PASSWORD"
+          signing_file="$RUNNER_TEMP/skypulse-release.jks"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$signing_file"
+          test -s "$signing_file"
+          echo "SKYPULSE_SIGNING_STORE_FILE=$signing_file" >> "$GITHUB_ENV"
+          echo "SKYPULSE_SIGNING_STORE_PASSWORD=$ANDROID_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+          echo "SKYPULSE_SIGNING_KEY_ALIAS=$ANDROID_KEY_ALIAS" >> "$GITHUB_ENV"
+          echo "SKYPULSE_SIGNING_KEY_PASSWORD=$ANDROID_KEY_PASSWORD" >> "$GITHUB_ENV"
+
+      - name: Test, lint and build APK
+        shell: bash
         run: |
           chmod +x gradlew
-          ./gradlew testDebugUnitTest assembleDebug --stacktrace --no-daemon
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            ./gradlew testDebugUnitTest lintDebug assembleRelease --stacktrace --no-daemon
+          else
+            ./gradlew testDebugUnitTest lintDebug assembleDebug --stacktrace --no-daemon
+          fi
 
       - name: Verify and stage APK
+        id: stage
+        shell: bash
         run: |
+          version="${{ steps.version.outputs.version }}"
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            source_apk="app/build/outputs/apk/release/app-release.apk"
+            package_name="skypulse-v${version}.apk"
+          else
+            source_apk="app/build/outputs/apk/debug/app-debug.apk"
+            package_name="skypulse-v${version}-debug.apk"
+          fi
+          test -s "$source_apk"
           mkdir -p artifacts
-          cp app/build/outputs/apk/debug/app-debug.apk artifacts/skypulse-v4.0.0.apk
-          unzip -t artifacts/skypulse-v4.0.0.apk
-          sha256sum artifacts/skypulse-v4.0.0.apk | tee artifacts/skypulse-v4.0.0.apk.sha256
+          cp "$source_apk" "artifacts/$package_name"
+          unzip -t "artifacts/$package_name"
+          apksigner_bin="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
+          test -x "$apksigner_bin"
+          "$apksigner_bin" verify --verbose --print-certs "artifacts/$package_name"
+          (cd artifacts && sha256sum "$package_name" | tee "$package_name.sha256")
+          (cd artifacts && sha256sum -c "$package_name.sha256")
+          echo "package_name=$package_name" >> "$GITHUB_OUTPUT"
 
       - name: Upload Android package
         uses: actions/upload-artifact@v4
         with:
-          name: skypulse-android-v4.0.0
+          name: skypulse-android-${{ steps.version.outputs.version }}
           path: artifacts/*
           if-no-files-found: error
           retention-days: 30
@@ -61,6 +117,8 @@ jobs:
     name: HarmonyOS HAP
     runs-on: ubuntu-latest
     timeout-minutes: 35
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -70,6 +128,17 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
+
+      - name: Resolve and verify mobile version
+        id: version
+        shell: bash
+        run: |
+          expected_tag=""
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            expected_tag="$GITHUB_REF_NAME"
+          fi
+          version="$(EXPECTED_RELEASE_TAG="$expected_tag" bash scripts/verify_mobile_versions.sh)"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Install Linux dependencies
         run: |
@@ -95,23 +164,26 @@ jobs:
           hvigorw assembleHap --mode module -p product=default -p module=entry@default -p buildMode=debug --no-daemon
 
       - name: Stage unsigned and OpenHarmony-signed HAPs
+        shell: bash
         run: |
+          version="${{ steps.version.outputs.version }}"
           unsigned_hap="$(find harmony/entry/build -type f -name '*-unsigned.hap' -print -quit)"
           test -n "$unsigned_hap"
           mkdir -p artifacts
-          cp "$unsigned_hap" artifacts/skypulse-harmony-v4.0.0-unsigned.hap
+          cp "$unsigned_hap" "artifacts/skypulse-harmony-v${version}-unsigned.hap"
           chmod +x harmony/scripts/sign_openharmony_hap.sh
           harmony/scripts/sign_openharmony_hap.sh \
-            artifacts/skypulse-harmony-v4.0.0-unsigned.hap \
-            artifacts/skypulse-harmony-v4.0.0-openharmony-signed.hap
-          unzip -t artifacts/skypulse-harmony-v4.0.0-unsigned.hap
-          unzip -t artifacts/skypulse-harmony-v4.0.0-openharmony-signed.hap
-          sha256sum artifacts/*.hap | tee artifacts/skypulse-harmony-v4.0.0.sha256
+            "artifacts/skypulse-harmony-v${version}-unsigned.hap" \
+            "artifacts/skypulse-harmony-v${version}-openharmony-signed.hap"
+          unzip -t "artifacts/skypulse-harmony-v${version}-unsigned.hap"
+          unzip -t "artifacts/skypulse-harmony-v${version}-openharmony-signed.hap"
+          (cd artifacts && sha256sum *.hap | tee "skypulse-harmony-v${version}.sha256")
+          (cd artifacts && sha256sum -c "skypulse-harmony-v${version}.sha256")
 
       - name: Upload HarmonyOS packages
         uses: actions/upload-artifact@v4
         with:
-          name: skypulse-harmony-v4.0.0
+          name: skypulse-harmony-${{ steps.version.outputs.version }}
           path: artifacts/*
           if-no-files-found: error
           retention-days: 30
@@ -119,50 +191,64 @@ jobs:
   release:
     name: Publish verified mobile packages
     needs: [android, harmony]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref_type == 'tag'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
+      - name: Verify job versions
+        shell: bash
+        run: |
+          test "${{ needs.android.outputs.version }}" = "${{ needs.harmony.outputs.version }}"
+          test "$GITHUB_REF_NAME" = "v${{ needs.android.outputs.version }}"
+
       - name: Download Android package
         uses: actions/download-artifact@v4
         with:
-          name: skypulse-android-v4.0.0
+          name: skypulse-android-${{ needs.android.outputs.version }}
           path: release
 
       - name: Download HarmonyOS packages
         uses: actions/download-artifact@v4
         with:
-          name: skypulse-harmony-v4.0.0
+          name: skypulse-harmony-${{ needs.harmony.outputs.version }}
           path: release
 
-      - name: Publish release
+      - name: Publish immutable release
         env:
           GH_TOKEN: ${{ github.token }}
+        shell: bash
         run: |
-          test -s release/skypulse-v4.0.0.apk
-          test -s release/skypulse-harmony-v4.0.0-unsigned.hap
-          test -s release/skypulse-harmony-v4.0.0-openharmony-signed.hap
-          if gh release view v4.0.0 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release edit v4.0.0 --repo "$GITHUB_REPOSITORY" --title "v4.0.0" --notes "修复已知问题"
-            gh release upload v4.0.0 release/* --repo "$GITHUB_REPOSITORY" --clobber
+          version="${{ needs.android.outputs.version }}"
+          test -s "release/skypulse-v${version}.apk"
+          test -s "release/skypulse-harmony-v${version}-unsigned.hap"
+          test -s "release/skypulse-harmony-v${version}-openharmony-signed.hap"
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            mkdir -p existing
+            gh release download "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --dir existing
+            for file in release/*; do
+              asset="$(basename "$file")"
+              test -f "existing/$asset"
+              cmp "$file" "existing/$asset"
+            done
           else
-            gh release create v4.0.0 release/* \
+            gh release create "$GITHUB_REF_NAME" release/* \
               --repo "$GITHUB_REPOSITORY" \
               --target "$GITHUB_SHA" \
-              --title "v4.0.0" \
+              --title "$GITHUB_REF_NAME" \
               --notes "修复已知问题"
           fi
 
       - name: Download and verify release assets
         env:
           GH_TOKEN: ${{ github.token }}
+        shell: bash
         run: |
           mkdir -p verified
-          gh release download v4.0.0 --repo "$GITHUB_REPOSITORY" --dir verified
-          for package in \
-            skypulse-v4.0.0.apk \
-            skypulse-harmony-v4.0.0-unsigned.hap \
-            skypulse-harmony-v4.0.0-openharmony-signed.hap; do
-            test -s "verified/$package"
-            cmp "release/$package" "verified/$package"
-            sha256sum "verified/$package"
+          gh release download "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --dir verified
+          for file in release/*; do
+            asset="$(basename "$file")"
+            test -s "verified/$asset"
+            cmp "$file" "verified/$asset"
+            sha256sum "verified/$asset"
           done
