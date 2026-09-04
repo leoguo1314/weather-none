@@ -5,7 +5,7 @@ on:
   push:
     branches:
       - main
-      - codex/ai-weather-app
+      - "codex/**"
     tags:
       - "v*"
   pull_request:
