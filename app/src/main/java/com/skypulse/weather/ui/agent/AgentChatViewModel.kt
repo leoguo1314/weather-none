@@ -6,6 +6,7 @@ import com.skypulse.weather.agent.AgentConfigStore
 import com.skypulse.weather.agent.AgentModelConfig
 import com.skypulse.weather.agent.OpenAiCompatibleClient
 import com.skypulse.weather.agent.WeatherAgentEngine
+import com.skypulse.weather.agent.selectAgentCity
 import com.skypulse.weather.agent.toAgentSnapshot
 import com.skypulse.weather.repository.CityRepository
 import com.skypulse.weather.repository.WeatherRepository
