@@ -66,6 +66,15 @@ sealed class UpdateCheckResult {
     data class Error(val message: String) : UpdateCheckResult()
 }
 
+/**
+ * A refresh may hide failures only while cached weather is already visible.
+ * This keeps background refreshes unobtrusive without trapping a cold start on Loading.
+ */
+internal fun effectiveRefreshSilence(
+    requestedSilent: Boolean,
+    hasCachedWeather: Boolean
+): Boolean = requestedSilent && hasCachedWeather
+
 // ============ ViewModel ============
 
 @HiltViewModel
@@ -152,7 +161,10 @@ class WeatherViewModel @Inject constructor(
         cityId to errorMsg
     }.flatMapLatest { (cityId, errorMsg) ->
         if (cityId == null) {
-            flowOf(WeatherUiState.Loading)
+            flowOf(
+                errorMsg?.let(WeatherUiState::Error)
+                    ?: WeatherUiState.Loading
+            )
         } else {
             repository.observeWeather(cityId).map { entity ->
                 if (entity != null) {
@@ -750,26 +762,37 @@ class WeatherViewModel @Inject constructor(
         city: City?,
         silent: Boolean
     ): Boolean {
+        val cityId = city?.id
+            ?: _savedCities.value.find { it.isCurrentLocation }?.id
+            ?: "current_location"
+        val hasCachedWeather = repository.getWeatherFromCache(cityId) != null
+        val effectiveSilent = effectiveRefreshSilence(
+            requestedSilent = silent,
+            hasCachedWeather = hasCachedWeather
+        )
         val startMs = android.os.SystemClock.elapsedRealtime()
-        refreshLog("run_refresh_with_timeout_start: silent=$silent, timeout=${REFRESH_MAX_ACTIVE_MS}ms, ${city.refreshSummary()}")
+        refreshLog(
+            "run_refresh_with_timeout_start: requestedSilent=$silent, effectiveSilent=$effectiveSilent, " +
+                "hasCachedWeather=$hasCachedWeather, timeout=${REFRESH_MAX_ACTIVE_MS}ms, ${city.refreshSummary()}"
+        )
         val result = try {
             withTimeoutOrNull(REFRESH_MAX_ACTIVE_MS) {
-                refreshSelectedWeather(city, silent)
+                refreshSelectedWeather(city, effectiveSilent)
             }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            refreshWarn("run_refresh_with_timeout_exception: elapsed=${elapsedSince(startMs)}ms, silent=$silent, ${city.refreshSummary()}, message=${e.message}")
+            refreshWarn("run_refresh_with_timeout_exception: elapsed=${elapsedSince(startMs)}ms, silent=$effectiveSilent, ${city.refreshSummary()}, message=${e.message}")
             Log.w(TAG, "refresh timed out or failed", e)
-            showRefreshFailureIfNoCache(city, silent, message = "更新失败，请稍后重试")
+            showRefreshFailureIfNoCache(city, effectiveSilent, message = "更新失败，请稍后重试")
             false
         }
         if (result == null) {
-            refreshWarn("run_refresh_with_timeout_timeout: elapsed=${elapsedSince(startMs)}ms, silent=$silent, ${city.refreshSummary()}")
+            refreshWarn("run_refresh_with_timeout_timeout: elapsed=${elapsedSince(startMs)}ms, silent=$effectiveSilent, ${city.refreshSummary()}")
             Log.w(TAG, "refresh exceeded ${REFRESH_MAX_ACTIVE_MS}ms, force reset animation")
-            showRefreshFailureIfNoCache(city, silent, message = "更新超时，请稍后重试")
+            showRefreshFailureIfNoCache(city, effectiveSilent, message = "更新超时，请检查网络或切换天气源")
         }
-        refreshLog("run_refresh_with_timeout_done: result=${result == true}, elapsed=${elapsedSince(startMs)}ms, silent=$silent, ${city.refreshSummary()}")
+        refreshLog("run_refresh_with_timeout_done: result=${result == true}, elapsed=${elapsedSince(startMs)}ms, silent=$effectiveSilent, ${city.refreshSummary()}")
         return result == true
     }
 
@@ -812,9 +835,9 @@ class WeatherViewModel @Inject constructor(
             scheduleLocationCalibration("refreshCurrentLocation")
         }
         if (!success && !silent) {
-            val errorMsg = (result as? SyncResult.Error)?.message ?: "获取天气数据失败，请稍后重试"
-            val city = _savedCities.value.find { it.isCurrentLocation }
-            if (city != null && repository.getWeatherFromCache(city.id) == null) {
+            val errorMsg = result.failureMessageOrNull() ?: "获取天气数据失败，请稍后重试"
+            val cityId = _savedCities.value.find { it.isCurrentLocation }?.id ?: "current_location"
+            if (repository.getWeatherFromCache(cityId) == null) {
                 transientError.value = errorMsg
             }
         }
@@ -830,7 +853,7 @@ class WeatherViewModel @Inject constructor(
     ) {
         val response = result.getOrNull()
         if (response == null) {
-            val errorMsg = (result as? SyncResult.Error)?.message ?: "获取天气数据失败"
+            val errorMsg = result.failureMessageOrNull() ?: "获取天气数据失败"
             if (!silent && repository.getWeatherFromCache(city.id) == null) {
                 transientError.value = errorMsg
             }

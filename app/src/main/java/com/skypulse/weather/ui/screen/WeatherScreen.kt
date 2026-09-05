@@ -463,7 +463,11 @@ fun WeatherScreen(
                                         onClick = { viewModel.fetchWeather() },
                                         shape = RoundedCornerShape(12.dp)
                                     ) {
-                                        Text("重试定位")
+                                        Text("重新加载")
+                                    }
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    TextButton(onClick = { viewModel.navigateToSettings() }) {
+                                        Text("切换天气源")
                                     }
                                     Spacer(modifier = Modifier.weight(1f))
                                 }

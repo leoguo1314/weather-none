@@ -701,14 +701,21 @@ sealed class SyncResult {
     data object RateLimited : SyncResult()
     data object LocationFailed : SyncResult()
 
+    fun failureMessageOrNull(): String? = when (this) {
+        is Success -> null
+        is Error -> message
+        is RateLimited -> "操作过于频繁，请稍后再试"
+        is LocationFailed -> "无法获取当前位置，请确认系统定位已开启后重试"
+    }
+
     inline fun <T> fold(
         onSuccess: (WeatherResponse) -> T,
         onFailure: (Throwable) -> T
     ): T = when (this) {
         is Success -> onSuccess(weather)
         is Error -> onFailure(Exception(message))
-        is RateLimited -> onFailure(Exception("操作过于频繁，请稍后再试"))
-        is LocationFailed -> onFailure(Exception("无法获取定位，请到室外空旷处重试"))
+        is RateLimited -> onFailure(Exception(failureMessageOrNull()))
+        is LocationFailed -> onFailure(Exception(failureMessageOrNull()))
     }
 
     inline fun onSuccess(action: (WeatherResponse) -> Unit): SyncResult {
@@ -717,9 +724,7 @@ sealed class SyncResult {
     }
 
     inline fun onFailure(action: (Throwable) -> Unit): SyncResult {
-        if (this is Error) action(Exception(message))
-        else if (this is RateLimited) action(Exception("操作过于频繁，请稍后再试"))
-        else if (this is LocationFailed) action(Exception("无法获取定位，请到室外空旷处重试"))
+        failureMessageOrNull()?.let { action(Exception(it)) }
         return this
     }
 

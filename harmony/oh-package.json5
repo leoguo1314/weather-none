@@ -1,7 +1,7 @@
 {
   "modelVersion": "5.0.0",
   "name": "skypulse-harmony",
-  "version": "4.1.0",
+  "version": "4.1.1",
   "description": "SkyPulse AI Weather for HarmonyOS",
   "main": "",
   "author": "leoguo1314",

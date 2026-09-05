@@ -411,7 +411,7 @@ struct Index {
       const response: http.HttpResponse = await request.request(url, {
         method: http.RequestMethod.GET,
         header: {
-          'User-Agent': 'SkyPulse-Weather/4.1.0 (github.com/leoguo1314/weather-none)'
+          'User-Agent': 'SkyPulse-Weather/4.1.1 (github.com/leoguo1314/weather-none)'
         },
         connectTimeout: 15000,
         readTimeout: 15000,
