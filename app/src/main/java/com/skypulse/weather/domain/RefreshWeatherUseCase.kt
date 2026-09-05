@@ -63,4 +63,8 @@ class RefreshWeatherUseCase @Inject constructor(
     suspend fun isFreshEnough(cityId: String?): Boolean {
         return syncManager.isFreshEnough(cityId)
     }
+
+    fun onWeatherSourceChanged() {
+        syncManager.onWeatherSourceChanged()
+    }
 }

@@ -3,6 +3,8 @@ package com.skypulse.weather.sync
 import android.util.Log
 import com.skypulse.weather.data.LocationManager
 import com.skypulse.weather.data.LocationRequestCoordinator
+import com.skypulse.weather.data.WeatherSource
+import com.skypulse.weather.data.WeatherSourceConfigStore
 import com.skypulse.weather.data.remote.SkyconCalibrator
 import com.skypulse.weather.model.City
 import com.skypulse.weather.model.WeatherResponse
@@ -35,7 +37,8 @@ class WeatherSyncManager @Inject constructor(
     private val cityRepository: CityRepository,
     private val locationManager: LocationManager,
     private val skyconCalibrator: SkyconCalibrator,
-    private val locationRequestCoordinator: LocationRequestCoordinator
+    private val locationRequestCoordinator: LocationRequestCoordinator,
+    private val weatherSourceConfigStore: WeatherSourceConfigStore
 ) {
 
     companion object {
@@ -140,6 +143,7 @@ class WeatherSyncManager @Inject constructor(
             Log.i(TAG, "refreshWeather: $cityId 开始网络请求 lon=$longitude lat=$latitude")
             locI("weather_fetch_start: cityId=$cityId, lon=$longitude, lat=$latitude")
             weatherI("weather_fetch_start: cityId=$cityId, lon=$longitude, lat=$latitude")
+            val sourceConfigAtStart = weatherSourceConfigStore.config.value
             val fetchStartMs = android.os.SystemClock.elapsedRealtime()
             val result = fetchWithRetry(longitude, latitude, fetchOptions)
             locI("weather_fetch_done: cityId=$cityId, elapsed=${elapsedSince(fetchStartMs)}ms, success=${result.isSuccess}")
@@ -148,8 +152,15 @@ class WeatherSyncManager @Inject constructor(
             Log.i(TAG, "refreshWeather: 网络请求完成, success=${result.isSuccess}")
             result.fold(
                 onSuccess = { rawResponse ->
+                    if (weatherSourceConfigStore.config.value != sourceConfigAtStart) {
+                        weatherW("weather_fetch_discarded_source_changed: cityId=$cityId")
+                        return@fold SyncResult.Error("天气源已切换，旧请求结果已丢弃")
+                    }
                     // 校准彩云的"阴天"和"多云"偏差（定位城市 + 收藏克隆城市）
-                    val response = if (shouldCalibrate(cityId)) {
+                    val response = if (
+                        sourceConfigAtStart.source == WeatherSource.CAIYUN &&
+                        shouldCalibrate(cityId)
+                    ) {
                         calibrateSkyconIfNeeded(rawResponse, longitude, latitude)
                     } else {
                         rawResponse
@@ -643,6 +654,11 @@ class WeatherSyncManager @Inject constructor(
             Result.failure(lastException ?: Exception("未知错误"))
         }
         return timedResult ?: Result.failure(Exception("weather_fetch_timeout"))
+    }
+
+    /** 清除内存限流状态，使天气源切换后的首次请求立即执行。 */
+    fun onWeatherSourceChanged() {
+        lastFetchRecordsByCityId.clear()
     }
 
     private fun mapError(e: Throwable): String = when {

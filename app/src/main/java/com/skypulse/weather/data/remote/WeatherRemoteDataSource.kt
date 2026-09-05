@@ -1,6 +1,8 @@
 package com.skypulse.weather.data.remote
 
 import android.os.SystemClock
+import com.skypulse.weather.data.WeatherSource
+import com.skypulse.weather.data.WeatherSourceConfigStore
 import com.skypulse.weather.model.Alert
 import com.skypulse.weather.model.WeatherResponse
 import com.skypulse.weather.model.toAlertContentList
@@ -12,7 +14,7 @@ import javax.inject.Singleton
 /**
  * 天气网络数据源。
  *
- * 封装 WeatherApiService 的调用，仅负责网络请求。
+ * 封装可配置天气源的调用，仅负责网络请求。
  * WeatherRepository 通过此类获取网络数据，自身仅负责 Room 缓存。
  *
  * 预警数据通过独立的 CaiyunAlertApi 获取（数据更完整），
@@ -20,7 +22,8 @@ import javax.inject.Singleton
  */
 @Singleton
 class WeatherRemoteDataSource @Inject constructor(
-    private val api: WeatherApiService,
+    private val weatherSourceClient: WeatherSourceClient,
+    private val weatherSourceConfigStore: WeatherSourceConfigStore,
     private val alertApi: CaiyunAlertApi
 ) {
 
@@ -55,16 +58,15 @@ class WeatherRemoteDataSource @Inject constructor(
         val totalStartMs = SystemClock.elapsedRealtime()
         weatherI("remote_get_weather_start: lon=$longitude, lat=$latitude, includeYesterday=$includeYesterday")
         return try {
+            val sourceConfig = weatherSourceConfigStore.config.value
             // 1. 请求天气主数据（alert=false，预警单独请求）
             val primaryStartMs = SystemClock.elapsedRealtime()
             weatherI("primary_weather_start: lon=$longitude, lat=$latitude, span=16, alert=false, dailyStart=${if (includeYesterday) -1 else null}, hourlySteps=${if (includeYesterday) 72 else 24}")
-            val response = api.getWeather(
+            val response = weatherSourceClient.getWeather(
                 longitude = longitude,
                 latitude = latitude,
-                span = 16,
-                alert = false,
-                dailyStart = if (includeYesterday) -1 else null,
-                hourlySteps = if (includeYesterday) 72 else 24
+                includeYesterday = includeYesterday,
+                config = sourceConfig
             )
             weatherI("primary_weather_done: elapsed=${elapsedSince(primaryStartMs)}ms, status=${response.status}, serverTime=${response.server_time}, tzshift=${response.tzshift}")
             if (response.status != "ok") {
@@ -73,7 +75,9 @@ class WeatherRemoteDataSource @Inject constructor(
             }
 
             // 2. 请求独立预警 API
-            val alertResponse = try {
+            val alertResponse = if (sourceConfig.source != WeatherSource.CAIYUN) {
+                response.result?.alert ?: Alert(status = "not_supported", content = emptyList())
+            } else try {
                 FileLogger.i(TAG, "预警API: 开始请求 lat=$latitude, lon=$longitude")
                 val alertStartMs = SystemClock.elapsedRealtime()
                 weatherI("alert_api_start: lat=$latitude, lon=$longitude, timeout=${ALERT_TIMEOUT_MS}ms")

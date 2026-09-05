@@ -39,6 +39,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -48,6 +49,8 @@ import com.skypulse.weather.data.ActivationResult
 import com.skypulse.weather.data.DebugWeatherPreset
 import com.skypulse.weather.data.ThemeMode
 import com.skypulse.weather.data.WeatherSettings
+import com.skypulse.weather.data.WeatherSource
+import com.skypulse.weather.data.WeatherSourceConfig
 import com.skypulse.weather.ui.components.FreeUserCard
 import com.skypulse.weather.ui.components.MembershipDialog
 import com.skypulse.weather.ui.components.MembershipRole
@@ -57,9 +60,10 @@ import com.skypulse.weather.ui.components.VipStatusCard
 import com.skypulse.weather.ui.components.VipUpgradeButton
 import com.skypulse.weather.ui.theme.*
 import com.skypulse.weather.viewmodel.UpdateCheckResult
+import com.skypulse.weather.viewmodel.WeatherSourceTestState
 
 /** 设置页内部子页面（局部导航，不新增全局 AppScreen） */
-private enum class SettingsSubPage { MembershipCompare, ContactAuthor }
+private enum class SettingsSubPage { MembershipCompare, WeatherSource, ContactAuthor }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -83,6 +87,12 @@ fun SettingsScreen(
     onShowCardMinutelyChange: (Boolean) -> Unit,
     onShowCardTyphoonChange: (Boolean) -> Unit,
     onThemeModeChange: (ThemeMode) -> Unit,
+    weatherSourceConfig: WeatherSourceConfig,
+    weatherSourceSecretsSecure: Boolean,
+    weatherSourceTestState: WeatherSourceTestState,
+    onWeatherSourceSave: (WeatherSourceConfig) -> Unit,
+    onWeatherSourceTest: (WeatherSourceConfig) -> Unit,
+    onWeatherSourceTestReset: () -> Unit,
     onVersionDoubleTap: () -> Boolean = { false },
     onDeveloperModeToggle: (Boolean) -> Unit = {},
     onDebugWeatherPresetChange: (DebugWeatherPreset?) -> Unit = {},
@@ -177,6 +187,15 @@ fun SettingsScreen(
                 SettingsSubPage.MembershipCompare -> MembershipCompareScreen(
                     isPremium = isPremium,
                     onUpgradeClick = { showMembershipDialog = true },
+                    onBack = { subPage = null }
+                )
+                SettingsSubPage.WeatherSource -> WeatherSourceSettingsScreen(
+                    config = weatherSourceConfig,
+                    secretsStoredSecurely = weatherSourceSecretsSecure,
+                    testState = weatherSourceTestState,
+                    onSave = onWeatherSourceSave,
+                    onTest = onWeatherSourceTest,
+                    onTestReset = onWeatherSourceTestReset,
                     onBack = { subPage = null }
                 )
                 SettingsSubPage.ContactAuthor -> ContactAuthorScreen(
@@ -284,6 +303,25 @@ fun SettingsScreen(
                             onClick = { onDeveloperModeToggle(false) }
                         )
                     }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                SectionHeader("数据源")
+                IosCard {
+                    SimpleItem(
+                        title = "天气数据源",
+                        subtitle = AnnotatedString("当前：${weatherSourceConfig.displayName}"),
+                        trailing = {
+                            LucideIcon(
+                                name = "chevron-right",
+                                contentDescription = null,
+                                size = 18.dp,
+                                tint = page.textSecondary
+                            )
+                        },
+                        onClick = { subPage = SettingsSubPage.WeatherSource }
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -692,6 +730,223 @@ private fun SimpleItem(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun WeatherSourceSettingsScreen(
+    config: WeatherSourceConfig,
+    secretsStoredSecurely: Boolean,
+    testState: WeatherSourceTestState,
+    onSave: (WeatherSourceConfig) -> Unit,
+    onTest: (WeatherSourceConfig) -> Unit,
+    onTestReset: () -> Unit,
+    onBack: () -> Unit
+) {
+    val context = LocalContext.current
+    val page = LocalSecondaryPageTheme.current
+    var draft by remember(config) { mutableStateOf(config) }
+    val validationError = draft.validationError()
+    val isTesting = testState is WeatherSourceTestState.Testing
+
+    fun update(value: WeatherSourceConfig) {
+        draft = value
+        onTestReset()
+    }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        TopAppBar(
+            title = { Text("天气数据源", color = page.textPrimary, fontWeight = FontWeight.SemiBold) },
+            navigationIcon = {
+                IconButton(onClick = onBack) {
+                    LucideIcon("arrow-left", "返回", tint = page.backArrow)
+                }
+            },
+            colors = TopAppBarDefaults.topAppBarColors(containerColor = page.background)
+        )
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+        ) {
+            SectionHeader("三个内置天气源")
+            IosCard {
+                listOf(
+                    WeatherSource.OPEN_METEO,
+                    WeatherSource.MET_NORWAY,
+                    WeatherSource.CAIYUN
+                ).forEachIndexed { index, source ->
+                    if (index > 0) IosDivider()
+                    WeatherSourceRadioItem(
+                        source = source,
+                        selected = draft.source == source,
+                        onClick = { update(draft.copy(source = source)) }
+                    )
+                }
+            }
+
+            if (draft.source == WeatherSource.CAIYUN) {
+                SourceHint("彩云 Token 留空时使用构建配置；公开构建通常需要自行填写。")
+                IosCard {
+                    SourceTextField(
+                        label = "彩云 Token",
+                        value = draft.caiyunToken,
+                        onValueChange = { update(draft.copy(caiyunToken = it)) },
+                        secret = true
+                    )
+                }
+            }
+
+            SectionHeader("自定义")
+            IosCard {
+                WeatherSourceRadioItem(
+                    source = WeatherSource.CUSTOM,
+                    selected = draft.source == WeatherSource.CUSTOM,
+                    onClick = { update(draft.copy(source = WeatherSource.CUSTOM)) }
+                )
+            }
+
+            if (draft.source == WeatherSource.CUSTOM) {
+                SourceHint("接口必须返回 Open-Meteo 兼容 JSON。URL 模板必须包含 {lat}、{lon}，可选 {days}、{key}。")
+                IosCard {
+                    SourceTextField(
+                        label = "显示名称",
+                        value = draft.customName,
+                        onValueChange = { update(draft.copy(customName = it)) }
+                    )
+                    IosDivider()
+                    SourceTextField(
+                        label = "HTTPS URL 模板",
+                        value = draft.customUrlTemplate,
+                        onValueChange = { update(draft.copy(customUrlTemplate = it)) },
+                        singleLine = false
+                    )
+                    IosDivider()
+                    SourceTextField(
+                        label = "请求头名称（可选）",
+                        value = draft.customHeaderName,
+                        onValueChange = { update(draft.copy(customHeaderName = it)) }
+                    )
+                    IosDivider()
+                    SourceTextField(
+                        label = "密钥 / 请求头值（可选）",
+                        value = draft.customHeaderValue,
+                        onValueChange = { update(draft.copy(customHeaderValue = it)) },
+                        secret = true
+                    )
+                }
+            }
+
+            if (!secretsStoredSecurely &&
+                (draft.source == WeatherSource.CAIYUN || draft.source == WeatherSource.CUSTOM)
+            ) {
+                SourceHint("当前设备的加密存储不可用，密钥仅在本次运行期间保留，不会明文写入磁盘。")
+            }
+
+            when (testState) {
+                WeatherSourceTestState.Idle -> Unit
+                WeatherSourceTestState.Testing -> SourceHint("正在使用北京坐标测试连接…")
+                is WeatherSourceTestState.Success -> SourceHint(testState.message, page.accentBlue)
+                is WeatherSourceTestState.Error -> SourceHint(testState.message, MaterialTheme.colorScheme.error)
+            }
+            if (validationError != null) {
+                SourceHint(validationError, MaterialTheme.colorScheme.error)
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = SkyPulseDesignSystem.Spacing.screenHorizontal, vertical = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                OutlinedButton(
+                    onClick = { onTest(draft.normalized()) },
+                    enabled = validationError == null && !isTesting,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    if (isTesting) {
+                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                    } else {
+                        Text("测试连接")
+                    }
+                }
+                Button(
+                    onClick = {
+                        onSave(draft.normalized())
+                        Toast.makeText(context, "天气源已保存，正在刷新", Toast.LENGTH_SHORT).show()
+                        onBack()
+                    },
+                    enabled = validationError == null && !isTesting,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("保存并应用")
+                }
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
+        }
+    }
+}
+
+@Composable
+private fun WeatherSourceRadioItem(
+    source: WeatherSource,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    val page = LocalSecondaryPageTheme.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(source.displayName, style = MaterialTheme.typography.bodyLarge, color = page.textPrimary)
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                source.description,
+                style = MaterialTheme.typography.bodySmall,
+                color = page.textSecondary,
+                lineHeight = 17.sp
+            )
+        }
+        RadioButton(selected = selected, onClick = onClick)
+    }
+}
+
+@Composable
+private fun SourceTextField(
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    secret: Boolean = false,
+    singleLine: Boolean = true
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label) },
+        singleLine = singleLine,
+        minLines = if (singleLine) 1 else 4,
+        visualTransformation = if (secret) PasswordVisualTransformation() else androidx.compose.ui.text.input.VisualTransformation.None,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 14.dp, vertical = 8.dp)
+    )
+}
+
+@Composable
+private fun SourceHint(text: String, color: Color = LocalSecondaryPageTheme.current.textSecondary) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodySmall,
+        color = color,
+        lineHeight = 18.sp,
+        modifier = Modifier.padding(horizontal = 22.dp, vertical = 10.dp)
+    )
+}
+
 /**
  * 权益对比页：左侧非会员权益 / 右侧会员权益，底部升级大按钮
  */
@@ -1001,4 +1256,3 @@ private fun ContactAuthorScreen(
         }
     }
 }
-

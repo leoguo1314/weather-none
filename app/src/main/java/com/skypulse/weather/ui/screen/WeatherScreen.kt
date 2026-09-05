@@ -89,6 +89,8 @@ fun WeatherScreen(
     val selectedCityId by viewModel.selectedCityId.collectAsStateWithLifecycle()
     val onboardingReady by viewModel.onboardingReady.collectAsStateWithLifecycle()
     val settings by settingsViewModel.settings.collectAsStateWithLifecycle()
+    val weatherSourceConfig by settingsViewModel.weatherSourceConfig.collectAsStateWithLifecycle()
+    val weatherSourceTestState by settingsViewModel.weatherSourceTestState.collectAsStateWithLifecycle()
     val isPremium by settingsViewModel.isPremium.collectAsStateWithLifecycle()
     var showMembershipDialog by remember { mutableStateOf(false) }
     // 免费用户定位名称截断到区/县级（取空格前第一段）
@@ -492,6 +494,15 @@ fun WeatherScreen(
                     onShowCardMinutelyChange = { settingsViewModel.setShowCardMinutely(it) },
                     onShowCardTyphoonChange = { settingsViewModel.setShowCardTyphoon(it) },
                     onThemeModeChange = { settingsViewModel.setThemeMode(it) },
+                    weatherSourceConfig = weatherSourceConfig,
+                    weatherSourceSecretsSecure = settingsViewModel.weatherSourceSecretsSecure,
+                    weatherSourceTestState = weatherSourceTestState,
+                    onWeatherSourceSave = { config ->
+                        settingsViewModel.saveWeatherSourceConfig(config)
+                        viewModel.onWeatherSourceChanged()
+                    },
+                    onWeatherSourceTest = { settingsViewModel.testWeatherSource(it) },
+                    onWeatherSourceTestReset = { settingsViewModel.resetWeatherSourceTest() },
                     onVersionDoubleTap = { settingsViewModel.onVersionDoubleTap() },
                     onDeveloperModeToggle = { settingsViewModel.setDeveloperModeEnabled(it) },
                     onDebugWeatherPresetChange = { settingsViewModel.setDebugWeatherPreset(it) },

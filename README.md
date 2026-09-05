@@ -24,6 +24,8 @@ SkyPulse 是一款同时支持 Android 与 HarmonyOS 的天气应用。Android �
 
 v4.0.0 新增 AI Weather Agent，可结合实时天气、逐时/逐日趋势、空气质量、天气预警、穿衣与出行风险给出自然语言建议。
 
+当前开发版 v4.1.0 新增三种内置天气源与自定义兼容源配置；正式下载仍以 v4.0.0 Release 为准，待双端验证通过后再发布。
+
 ## 功能亮点
 
 | 能力 | Android | HarmonyOS |
@@ -32,11 +34,42 @@ v4.0.0 新增 AI Weather Agent，可结合实时天气、逐时/逐日趋势、�
 | 天气预报 | 48 小时、15 天 | 7 天 |
 | 城市能力 | GPS 定位、多城市管理 | 预置城市切换 |
 | AI 天气助手 | 本地 Agent；可选 OpenAI/OneAPI/Ollama 兼容模型 | 免 Key 本地 Weather Agent |
-| 数据源 | 彩云天气及项目配置的天气服务 | Open-Meteo 免 Key 接口 |
+| 数据源 | Open-Meteo、MET Norway、彩云天气、自定义兼容源 | Open-Meteo、MET Norway、彩云天气、自定义兼容源 |
 | 原生 UI | Jetpack Compose + Material 3 | ArkUI |
 | 系统要求 | Android 8.0 / API 26 及以上 | HarmonyOS 6.0 / API 20 及以上，兼容 HarmonyOS 7 |
 
 > Android 外部大模型为可选配置；不配置 API Key 时，天气与本地 AI 建议仍可使用。模型连接失败会回退到本地 Agent。
+
+## 天气数据源设置
+
+Android 在 **设置 > 数据源 > 天气数据源** 中配置；HarmonyOS 在首页顶部切换到 **天气源** 页配置。两端均内置：
+
+| 天气源 | 密钥 | 主要能力 |
+|---|---|---|
+| Open-Meteo | 不需要 | 全球实时、逐小时和最多 16 日预报；默认推荐 |
+| MET Norway | 不需要 | 挪威气象研究所全球九日预报 |
+| 彩云天气 | 需要 Token，或由构建环境注入 | 中国地区分钟级降水及预警能力更完整 |
+
+切换天气源后，Android 会清除上一来源的天气缓存并立即刷新；HarmonyOS 会要求执行一次“测试并应用”，避免旧来源数据与新来源名称混用。AI Weather Agent 始终读取当前已选来源的最新天气。
+
+### 自定义兼容源
+
+自定义接口必须使用 HTTPS，并返回 Open-Meteo Forecast API 兼容 JSON，至少包含 `current`、`hourly`、`daily`（HarmonyOS 最低要求 `current`、`daily`）。URL 模板支持：
+
+- `{lat}`：纬度，必填
+- `{lon}`：经度，必填
+- `{days}`：预报天数
+- `{key}`：经过 URL 编码的可选密钥
+
+示例：
+
+~~~text
+https://weather.example.com/v1/forecast?latitude={lat}&longitude={lon}&forecast_days={days}&apikey={key}
+~~~
+
+Android 还支持单个自定义请求头，例如 `Authorization: Bearer ...` 或 `X-API-Key: ...`。Token 和请求头值使用系统加密存储；若设备加密组件不可用，只保留在当前运行内存中。HarmonyOS 当前仅持久化非敏感配置，彩云 Token 和自定义密钥不会明文落盘，重启后需要重新输入。不要把真实密钥直接写入 URL 模板。
+
+连接资料：[Open-Meteo Forecast API](https://open-meteo.com/en/docs) · [MET Norway Locationforecast](https://api.met.no/weatherapi/locationforecast/2.0/documentation)
 
 ## 下载
 
@@ -147,7 +180,7 @@ hdc install -r /absolute/path/to/skypulse-signed.hap
 | bundleName 已存在或无权限 | 应用标识不属于当前开发者账号 | 修改 **harmony/AppScope/app.json5** 中的 bundleName |
 | DevEco Studio 找不到手机 | USB 调试未开启、未授权或线缆异常 | 重新连接并确认手机授权，使用 **hdc list targets** 检查 |
 | 已有同包名应用但签名不同 | 手机上残留其他证书签名的版本 | 卸载旧版后再安装；注意本地数据会被清除 |
-| 打开后无法刷新天气 | 网络不可用或 Open-Meteo 暂时不可达 | 检查网络后重试 |
+| 打开后无法刷新天气 | 网络不可用、所选天气源不可达或 Token 无效 | 在“天气源”页测试连接，或切回 Open-Meteo |
 
 官方参考：[应用开发准备与签名](https://developer.huawei.com/consumer/cn/doc/HarmonyOS-Guides/application-dev-overview) · [配置调试签名](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/ide-signing) · [HDC 调试命令](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/hdc)
 
@@ -202,7 +235,7 @@ Android Agent 会根据用户问题选择并组合天气工具：
 
 Android 端支持配置 OpenAI API 兼容服务，包括常见的 OneAPI 或本地 Ollama 网关。模型 API Key 只在系统加密存储可用时持久化；如果设备无法启用加密组件，Key 仅在当前运行期间保留，重启后需要重新输入。未配置或调用失败时使用本地规则推理。
 
-HarmonyOS 端提供无需模型 Key 的本地 Weather Agent，结合 Open-Meteo 实时天气和 7 日预报生成趋势、穿衣与出行建议。
+HarmonyOS 端提供无需模型 Key 的本地 Weather Agent，结合当前选定天气源的实时天气和最多 7 日预报生成趋势、穿衣与出行建议。
 
 ## 工程结构
 

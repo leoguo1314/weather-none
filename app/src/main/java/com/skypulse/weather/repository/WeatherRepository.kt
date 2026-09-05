@@ -131,6 +131,11 @@ class WeatherRepository @Inject constructor(
         weatherDao.delete(cityId)
     }
 
+    /** 切换天气源后清空旧来源缓存，避免在新来源刷新完成前混用数据。 */
+    suspend fun clearWeatherCache() {
+        weatherDao.deleteAll()
+    }
+
     // ============ Hourly Window Filtering ============
 
     private fun WeatherResponse.withCurrentHourlyWindow(): WeatherResponse {

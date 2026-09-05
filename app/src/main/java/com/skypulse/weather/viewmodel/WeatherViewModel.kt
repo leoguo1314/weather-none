@@ -598,6 +598,21 @@ class WeatherViewModel @Inject constructor(
         }
     }
 
+    /** 应用新的天气源后丢弃旧缓存并立即刷新当前城市。 */
+    fun onWeatherSourceChanged() {
+        viewModelScope.launch {
+            refreshWeatherUseCase.onWeatherSourceChanged()
+            repository.clearWeatherCache()
+            transientError.value = null
+            performRefreshWithAnimation(
+                city = selectedCityForRefresh(),
+                source = "weatherSourceChanged",
+                minElapsedMs = 0L,
+                successDelayMs = 0L
+            )
+        }
+    }
+
     fun fetchDefaultWeather() {
         viewModelScope.launch {
             transientError.value = null

@@ -14,6 +14,9 @@ interface WeatherDao {
     @Query("DELETE FROM weather WHERE cityId = :cityId")
     suspend fun delete(cityId: String)
 
+    @Query("DELETE FROM weather")
+    suspend fun deleteAll()
+
     @Query("SELECT * FROM weather WHERE cityId = :cityId")
     fun observeWeather(cityId: String): Flow<WeatherEntity?>
 
