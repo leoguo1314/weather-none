@@ -13,6 +13,7 @@ import com.skypulse.weather.repository.CityRepository
 import com.skypulse.weather.repository.WeatherRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -67,6 +68,7 @@ class AgentChatViewModel @Inject constructor(
         )
         viewModelScope.launch {
             val result = runCatching { modelClient.testConnection(config) }
+                .onFailure { if (it is CancellationException) throw it }
             _state.value = _state.value.copy(
                 isTestingModel = false,
                 modelTestMessage = result.fold(
@@ -127,6 +129,7 @@ class AgentChatViewModel @Inject constructor(
                     }.onSuccess {
                         source = ResponseSource.EXTERNAL_MODEL
                     }.getOrElse { error ->
+                        if (error is CancellationException) throw error
                         modelWarning = "${config.providerName} / ${config.model} 连接失败，" +
                             "已切换为本地 Agent：${error.message.orEmpty()}"
                         localResult.answer
@@ -149,6 +152,7 @@ class AgentChatViewModel @Inject constructor(
                     errorMessage = modelWarning
                 )
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 _state.value = _state.value.copy(
                     isThinking = false,
                     errorMessage = e.message ?: "天气分析失败，请先返回主页刷新天气。"

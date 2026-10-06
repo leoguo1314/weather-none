@@ -23,7 +23,7 @@ enum class ModelProviderPreset(
     DEEPSEEK(
         displayName = "DeepSeek",
         defaultBaseUrl = "https://api.deepseek.com/v1",
-        suggestedModels = listOf("deepseek-chat", "deepseek-reasoner")
+        suggestedModels = listOf("deepseek-flash", "deepseek-v4-pro")
     ),
     SILICON_FLOW(
         displayName = "硅基流动",

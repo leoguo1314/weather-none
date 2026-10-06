@@ -44,6 +44,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
@@ -57,6 +58,7 @@ import com.skypulse.weather.agent.AgentModelSettings
 import com.skypulse.weather.agent.AgentProviderConfig
 import com.skypulse.weather.agent.ModelProviderPreset
 import com.skypulse.weather.agent.resolveOpenAiChatEndpoint
+import com.skypulse.weather.agent.modelEndpointDisplay
 import java.util.UUID
 
 private val suggestions = listOf(
@@ -232,7 +234,7 @@ private fun MessageBubble(message: AgentMessage) {
 }
 
 @Composable
-private fun ModelSettingsDialog(
+internal fun ModelSettingsDialog(
     settings: AgentModelSettings,
     secureStorageAvailable: Boolean,
     isTestingModel: Boolean,
@@ -296,7 +298,7 @@ private fun ModelSettingsDialog(
                 Spacer(modifier = Modifier.height(10.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("启用外部模型", modifier = Modifier.weight(1f))
-                    Switch(checked = enabled, onCheckedChange = { enabled = it })
+                    Switch(checked = enabled, onCheckedChange = { enabled = it }, modifier = Modifier.testTag("external-model-enabled"))
                 }
 
                 Column(
@@ -415,7 +417,7 @@ private fun ProviderCard(
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                TextButton(onClick = onToggle, modifier = Modifier.weight(1f)) {
+                TextButton(onClick = onToggle, modifier = Modifier.weight(1f).testTag("provider-${provider.id}")) {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.Start
@@ -427,8 +429,8 @@ private fun ProviderCard(
                         )
                     }
                 }
-                TextButton(onClick = onEdit) { Text("编辑") }
-                TextButton(onClick = onDelete) { Text("删除") }
+                TextButton(onClick = onEdit, modifier = Modifier.testTag("edit-${provider.id}")) { Text("编辑") }
+                TextButton(onClick = onDelete, modifier = Modifier.testTag("delete-${provider.id}")) { Text("删除") }
             }
 
             if (expanded) {
@@ -450,13 +452,14 @@ private fun ProviderCard(
                         RadioButton(selected = selected, onClick = { onSelectModel(model) })
                         TextButton(
                             onClick = { onSelectModel(model) },
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f).testTag("model-${provider.id}-$model")
                         ) {
                             Text(model, modifier = Modifier.fillMaxWidth())
                         }
                         TextButton(
                             onClick = { onTest(model) },
-                            enabled = !isTestingModel
+                            enabled = !isTestingModel,
+                            modifier = Modifier.testTag("test-${provider.id}-$model")
                         ) {
                             Text(if (isTestingModel) "测试中" else "测试")
                         }
@@ -600,5 +603,5 @@ private fun ProviderEditorDialog(
 }
 
 private fun resolveEndpointPreview(baseUrl: String): String = runCatching {
-    "实际请求：${resolveOpenAiChatEndpoint(baseUrl)}"
+    "实际请求：${modelEndpointDisplay(baseUrl)}"
 }.getOrElse { "地址提示：${it.message.orEmpty()}" }

@@ -1,6 +1,7 @@
 package com.skypulse.weather.agent
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -54,5 +55,29 @@ class OpenAiEndpointResolverTest {
 
         assertTrue(result.isFailure)
         assertTrue(result.exceptionOrNull()?.message.orEmpty().contains("HTTPS"))
+    }
+
+    @Test
+    fun `domain that looks like private IP is rejected`() {
+        assertTrue(runCatching { resolveOpenAiChatEndpoint("http://10.example.com/v1") }.isFailure)
+        assertTrue(runCatching { resolveOpenAiChatEndpoint("http://192.168.example.com/v1") }.isFailure)
+    }
+
+    @Test
+    fun `native Ollama route receives compatible protocol guidance`() {
+        val failure = runCatching { resolveOpenAiChatEndpoint("http://192.168.1.8:11434/api/chat") }.exceptionOrNull()
+        assertTrue(failure?.message.orEmpty().contains("11434/v1"))
+    }
+
+    @Test
+    fun `URL credentials must be moved to key field`() {
+        assertTrue(runCatching { resolveOpenAiChatEndpoint("https://user:secret@example.com/v1") }.isFailure)
+    }
+
+    @Test
+    fun `display hides query credentials while retaining API version`() {
+        val display = modelEndpointDisplay("https://example.com/v1?token=secret&api-version=2026-01-01")
+        assertFalse(display.contains("secret"))
+        assertTrue(display.contains("api-version=2026-01-01"))
     }
 }

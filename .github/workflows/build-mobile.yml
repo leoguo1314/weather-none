@@ -113,6 +113,40 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+      - name: Enable KVM for Android UI validation
+        run: |
+          sudo chmod 666 /dev/kvm
+
+      - name: Validate model settings on Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          arch: x86_64
+          target: default
+          disable-animations: true
+          script: ./gradlew connectedDebugAndroidTest --stacktrace --no-daemon
+
+      - name: Collect Android validation evidence
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p validation-evidence
+          adb pull /sdcard/Android/data/com.skypulse.weather/files/validation validation-evidence/ || true
+
+      - name: Upload Android validation reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: skypulse-android-validation-${{ steps.version.outputs.version }}
+          path: |
+            app/build/test-results/testDebugUnitTest/
+            app/build/reports/androidTests/
+            app/build/outputs/androidTest-results/
+            app/build/reports/lint-results-debug.html
+            validation-evidence/
+          if-no-files-found: warn
+          retention-days: 30
+
   harmony:
     name: HarmonyOS HAP
     runs-on: ubuntu-latest
