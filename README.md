@@ -24,7 +24,7 @@ SkyPulse 是一款同时支持 Android 与 HarmonyOS 的天气应用。Android �
 
 v4.0.0 新增 AI Weather Agent，可结合实时天气、逐时/逐日趋势、空气质量、天气预警、穿衣与出行风险给出自然语言建议。
 
-当前验证版 v4.1.1 新增三种内置天气源与自定义兼容源配置，并修复 Android 首次授权后天气请求失败时一直停留在加载页的问题；正式下载仍以 v4.0.0 Release 为准，待双端验证通过后再发布。
+当前验证版 v4.2.0 新增三种内置天气源与自定义兼容源配置、多模型厂商管理，并修复 Android 首次授权后一直加载及模型服务 HTTP 405 问题；正式下载仍以 v4.0.0 Release 为准，待双端验证通过后再发布。
 
 ## 功能亮点
 
@@ -33,7 +33,7 @@ v4.0.0 新增 AI Weather Agent，可结合实时天气、逐时/逐日趋势、�
 | 实时天气 | 温度、湿度、风、气压、能见度、AQI | 温度、体感、湿度、风速 |
 | 天气预报 | 48 小时、15 天 | 7 天 |
 | 城市能力 | GPS 定位、多城市管理 | 预置城市切换 |
-| AI 天气助手 | 本地 Agent；可选 OpenAI/OneAPI/Ollama 兼容模型 | 免 Key 本地 Weather Agent |
+| AI 天气助手 | 本地 Agent；支持多厂商、多模型 OpenAI 兼容服务 | 免 Key 本地 Weather Agent |
 | 数据源 | Open-Meteo、MET Norway、彩云天气、自定义兼容源 | Open-Meteo、MET Norway、彩云天气、自定义兼容源 |
 | 原生 UI | Jetpack Compose + Material 3 | ArkUI |
 | 系统要求 | Android 8.0 / API 26 及以上 | HarmonyOS 6.0 / API 20 及以上，兼容 HarmonyOS 7 |
@@ -233,7 +233,16 @@ Android Agent 会根据用户问题选择并组合天气工具：
 - 穿衣建议
 - 出行风险
 
-Android 端支持配置 OpenAI API 兼容服务，包括常见的 OneAPI 或本地 Ollama 网关。模型 API Key 只在系统加密存储可用时持久化；如果设备无法启用加密组件，Key 仅在当前运行期间保留，重启后需要重新输入。未配置或调用失败时使用本地规则推理。
+Android 端支持同时配置多个 OpenAI API 兼容厂商，内置 OpenAI、DeepSeek、硅基流动、阿里云百炼、OpenRouter、Ollama、LM Studio、OneAPI / New API 和自定义厂商模板。进入 **AI 天气助手 > 模型** 后：
+
+1. 点击“添加模型厂商”，选择模板并配置 Base URL、API Key 和模型列表。
+2. 保存厂商后，在厂商列表中点击厂商名称，下钻展开该厂商的模型列表。
+3. 选择一个模型作为当前模型；可针对任意模型点击“测试”，验证实际 Chat Completions 请求。
+4. 最后启用外部模型并保存；未启用或调用失败时自动回退本地天气 Agent。
+
+Base URL 可以填写厂商根地址、以 `/v1` 等版本路径结尾的地址，或完整的 `/chat/completions` 地址。应用会自动规范化端点；如果误填 `/models`，也会转换到同级 `/chat/completions`。HTTP 405 错误会显示实际请求地址，便于核对网关路由。Ollama 或 LM Studio 运行在电脑上时，不能使用手机自身的 `127.0.0.1`，需填写电脑局域网 IP，例如 `http://192.168.1.8:11434/v1` 或 `http://192.168.1.8:1234/v1`。
+
+模型 API Key 只在系统加密存储可用时持久化；如果设备无法启用加密组件，Key 仅在当前运行期间保留，重启后需要重新输入。
 
 HarmonyOS 端提供无需模型 Key 的本地 Weather Agent，结合当前选定天气源的实时天气和最多 7 日预报生成趋势、穿衣与出行建议。
 

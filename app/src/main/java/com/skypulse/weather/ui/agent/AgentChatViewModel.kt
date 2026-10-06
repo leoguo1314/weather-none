@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.skypulse.weather.agent.AgentConfigStore
 import com.skypulse.weather.agent.AgentModelConfig
+import com.skypulse.weather.agent.AgentModelSettings
 import com.skypulse.weather.agent.OpenAiCompatibleClient
 import com.skypulse.weather.agent.WeatherAgentEngine
 import com.skypulse.weather.agent.selectAgentCity
@@ -29,6 +30,7 @@ class AgentChatViewModel @Inject constructor(
 ) : ViewModel() {
     private val engine = WeatherAgentEngine()
     private var targetCityId: String? = null
+    private val initialModelSettings = configStore.loadSettings()
 
     private fun welcomeMessage(cityName: String? = null) = AgentMessage(
         id = "welcome",
@@ -39,15 +41,40 @@ class AgentChatViewModel @Inject constructor(
     private val _state = MutableStateFlow(
         AgentUiState(
             messages = listOf(welcomeMessage()),
-            config = configStore.load(),
+            config = initialModelSettings.activeConfig,
+            modelSettings = initialModelSettings,
             secureStorageAvailable = configStore.storesApiKeySecurely
         )
     )
     val state: StateFlow<AgentUiState> = _state.asStateFlow()
 
-    fun saveConfig(config: AgentModelConfig) {
-        configStore.save(config)
-        _state.value = _state.value.copy(config = config, errorMessage = null)
+    fun saveModelSettings(settings: AgentModelSettings) {
+        val normalized = settings.normalized()
+        configStore.saveSettings(normalized)
+        _state.value = _state.value.copy(
+            config = normalized.activeConfig,
+            modelSettings = normalized,
+            errorMessage = null,
+            modelTestMessage = null
+        )
+    }
+
+    fun testModel(config: AgentModelConfig) {
+        if (_state.value.isTestingModel) return
+        _state.value = _state.value.copy(
+            isTestingModel = true,
+            modelTestMessage = "正在测试 ${config.providerName} / ${config.model}…"
+        )
+        viewModelScope.launch {
+            val result = runCatching { modelClient.testConnection(config) }
+            _state.value = _state.value.copy(
+                isTestingModel = false,
+                modelTestMessage = result.fold(
+                    onSuccess = { "${config.providerName} / ${config.model} 连接成功" },
+                    onFailure = { "连接失败：${it.message.orEmpty()}" }
+                )
+            )
+        }
     }
 
     fun selectCity(cityId: String?) {
@@ -100,7 +127,8 @@ class AgentChatViewModel @Inject constructor(
                     }.onSuccess {
                         source = ResponseSource.EXTERNAL_MODEL
                     }.getOrElse { error ->
-                        modelWarning = "模型连接失败，已切换为本地 Agent：${error.message.orEmpty()}"
+                        modelWarning = "${config.providerName} / ${config.model} 连接失败，" +
+                            "已切换为本地 Agent：${error.message.orEmpty()}"
                         localResult.answer
                     }
                 } else {
