@@ -124,14 +124,7 @@ jobs:
           arch: x86_64
           target: default
           disable-animations: true
-          script: ./gradlew connectedDebugAndroidTest --stacktrace --no-daemon
-
-      - name: Collect Android validation evidence
-        if: always()
-        shell: bash
-        run: |
-          mkdir -p validation-evidence
-          adb pull /sdcard/Android/data/com.skypulse.weather/files/validation validation-evidence/ || true
+          script: bash scripts/validate_android_emulator.sh
 
       - name: Upload Android validation reports
         if: always()

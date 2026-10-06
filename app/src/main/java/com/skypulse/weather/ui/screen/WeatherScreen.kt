@@ -28,6 +28,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.IntOffset
@@ -335,6 +337,7 @@ fun WeatherScreen(
                                     modifier = Modifier
                                         .fillMaxSize()
                                         .testTag("weather-content")
+                                        .semantics { testTagsAsResourceId = true }
                                         .statusBarsPadding()
                                 ) {
                                     Spacer(modifier = Modifier.height(12.dp))
@@ -442,6 +445,7 @@ fun WeatherScreen(
                                     modifier = Modifier
                                         .fillMaxSize()
                                         .testTag("weather-error")
+                                        .semantics { testTagsAsResourceId = true }
                                         .statusBarsPadding()
                                         .padding(24.dp),
                                     horizontalAlignment = Alignment.CenterHorizontally,

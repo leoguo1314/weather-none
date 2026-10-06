@@ -264,6 +264,7 @@ weather-none/
 GitHub Actions 会执行：
 
 - Android 单元测试、Lint 与 APK 构建
+- Android 模拟器授权启动、模型厂商展开/选择/增删及加密配置迁移测试，提供测试报告和界面截图
 - HarmonyOS ArkTS 类型检查与 HAP 构建
 - APK 签名验证，以及 APK/HAP 的 ZIP 完整性和 SHA-256 校验
 - HAP OpenHarmony 自签名验证，并保留华为开发者重新签名所需的未签名包
