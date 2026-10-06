@@ -70,7 +70,7 @@ import kotlinx.coroutines.launch
 
 val LocalSkipCardAnimation = compositionLocalOf { false }
 
-@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterialApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterialApi::class, androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
 fun WeatherScreen(
     viewModel: WeatherViewModel = hiltViewModel(),
