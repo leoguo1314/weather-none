@@ -9,6 +9,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.skypulse.weather.ui.theme.TextPrimary
+import com.skypulse.weather.ui.theme.TextSecondary
 
 @Composable
 fun AIWeatherAssistantCard(
@@ -25,11 +27,13 @@ fun AIWeatherAssistantCard(
         ) {
             Text(
                 text = "AI 天气助手",
-                style = MaterialTheme.typography.titleMedium
+                style = MaterialTheme.typography.titleMedium,
+                color = TextPrimary
             )
             Text(
                 text = "基于实时天气进行趋势研判、穿衣建议和出行风险分析",
-                style = MaterialTheme.typography.bodyMedium
+                style = MaterialTheme.typography.bodyMedium,
+                color = TextSecondary
             )
         }
     }
